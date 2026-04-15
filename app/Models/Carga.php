@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Carga extends Model
 {
     protected $fillable = [
+        'bot_id',
         'rfq_uuid',
         'rfq_id',
         'origem',
@@ -35,6 +36,17 @@ class Carga extends Model
     public function scopeCapturadas($query)
     {
         return $query->where('status', 'capturada');
+    }
+
+    public function scopeSimuladas($query)
+    {
+        return $query->where('status', 'simulada');
+    }
+
+    /** Cargas efetivamente aceites: captura real no SAP ou simulação em modo teste. */
+    public function scopeAceitas($query)
+    {
+        return $query->whereIn('status', ['capturada', 'simulada']);
     }
 
     public function scopeHoje($query)

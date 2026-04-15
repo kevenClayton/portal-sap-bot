@@ -1,8 +1,12 @@
 <template>
-  <div class="space-y-6">
-    <h2 class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Logs</h2>
+  <div class="space-y-8">
+    <PageHeader
+      title="Logs"
+      eyebrow="Diagnóstico"
+      description="Eventos enviados pelo worker e pela API: erros de auth, cargas aceitas, avisos."
+    />
 
-    <div class="max-h-[70vh] overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+    <div class="ui-card max-h-[70vh] overflow-hidden shadow-sm">
       <div class="overflow-auto">
         <table class="w-full text-left text-sm">
           <thead class="sticky top-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
@@ -43,6 +47,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import PageHeader from '@/components/PageHeader.vue';
 
 const logs = ref([]);
 const loading = ref(false);

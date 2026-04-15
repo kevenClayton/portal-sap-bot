@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExecucaoController;
 use App\Http\Controllers\Api\LogController;
 use App\Http\Controllers\Api\ParametroController;
+use App\Http\Controllers\Api\RelatorioController;
 use App\Http\Controllers\Api\WorkerController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,11 +36,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('bots.parametros', ParametroController::class)->shallow();
 
-    Route::get('cargas', [CargaController::class, 'index']);
     Route::get('cargas/analisadas', [CargaController::class, 'analisadas']);
     Route::get('cargas/capturadas', [CargaController::class, 'capturadas']);
+    Route::get('cargas/simuladas', [CargaController::class, 'simuladas']);
+    Route::get('cargas/aceitas', [CargaController::class, 'aceitas']);
+    Route::get('cargas', [CargaController::class, 'index']);
 
     Route::get('execucoes', [ExecucaoController::class, 'index']);
 
     Route::get('logs', [LogController::class, 'index']);
+
+    Route::get('relatorio/resumo', [RelatorioController::class, 'resumo']);
 });

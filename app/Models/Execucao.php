@@ -14,6 +14,7 @@ class Execucao extends Model
         'cargas_analisadas',
         'cargas_capturadas',
         'cargas_ignoradas',
+        'cargas_simuladas',
         'inicio_execucao',
         'fim_execucao',
         'status',

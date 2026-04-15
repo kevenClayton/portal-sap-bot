@@ -39,4 +39,13 @@ return [
         'token' => env('WORKER_API_TOKEN'),
     ],
 
+    /*
+    | Webhook chamado ao capturar/simular carga, se houver números em parametros.whatsapp_numeros.
+    | Autenticação opcional: Bearer WHATSAPP_NOTIFY_TOKEN
+    */
+    'whatsapp' => [
+        'notify_url' => env('WHATSAPP_NOTIFY_URL'),
+        'notify_token' => env('WHATSAPP_NOTIFY_TOKEN'),
+    ],
+
 ];

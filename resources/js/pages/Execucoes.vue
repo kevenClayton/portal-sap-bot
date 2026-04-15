@@ -1,8 +1,12 @@
 <template>
-  <div class="space-y-6">
-    <h2 class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Execuções</h2>
+  <div class="space-y-8">
+    <PageHeader
+      title="Execuções"
+      eyebrow="Histórico"
+      description="Ciclos do worker: contagens por execução e estado (em andamento, concluída ou erro)."
+    />
 
-    <div class="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+    <div class="ui-card overflow-hidden shadow-sm">
       <table class="w-full text-left text-sm">
         <thead class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/80">
           <tr>
@@ -12,6 +16,7 @@
             <th class="px-4 py-3 font-medium text-zinc-500 dark:text-zinc-400">Analisadas</th>
             <th class="px-4 py-3 font-medium text-zinc-500 dark:text-zinc-400">Capturadas</th>
             <th class="px-4 py-3 font-medium text-zinc-500 dark:text-zinc-400">Ignoradas</th>
+            <th class="px-4 py-3 font-medium text-zinc-500 dark:text-zinc-400">Simuladas</th>
             <th class="px-4 py-3 font-medium text-zinc-500 dark:text-zinc-400">Status</th>
           </tr>
         </thead>
@@ -23,6 +28,7 @@
             <td class="px-4 py-3 text-zinc-700 dark:text-zinc-300">{{ e.cargas_analisadas }}</td>
             <td class="px-4 py-3 text-emerald-600 dark:text-emerald-400">{{ e.cargas_capturadas }}</td>
             <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">{{ e.cargas_ignoradas }}</td>
+            <td class="px-4 py-3 text-violet-600 dark:text-violet-400">{{ e.cargas_simuladas ?? 0 }}</td>
             <td class="px-4 py-3">
               <span
                 class="rounded-full px-2 py-0.5 text-xs font-medium"
@@ -47,6 +53,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import PageHeader from '@/components/PageHeader.vue';
 
 const execucoes = ref([]);
 const loading = ref(false);

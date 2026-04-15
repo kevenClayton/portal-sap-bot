@@ -14,10 +14,23 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'dashboard', component: () => import('@/pages/Dashboard.vue'), meta: { title: 'Dashboard' } },
+      { path: 'robo', name: 'robo', component: () => import('@/pages/Robo.vue'), meta: { title: 'Robô' } },
       { path: 'config', name: 'config', component: () => import('@/pages/Config.vue'), meta: { title: 'Configuração' } },
-      { path: 'cargas', name: 'cargas', component: () => import('@/pages/Cargas.vue'), meta: { title: 'Cargas' } },
+      {
+        path: 'cargas/aceitas',
+        name: 'cargas-aceitas',
+        component: () => import('@/pages/Cargas.vue'),
+        meta: { title: 'Cargas aceitas', cargasModo: 'aceitas' },
+      },
+      {
+        path: 'cargas',
+        name: 'cargas',
+        component: () => import('@/pages/Cargas.vue'),
+        meta: { title: 'Cargas', cargasModo: 'geral' },
+      },
       { path: 'execucoes', name: 'execucoes', component: () => import('@/pages/Execucoes.vue'), meta: { title: 'Execuções' } },
       { path: 'logs', name: 'logs', component: () => import('@/pages/Logs.vue'), meta: { title: 'Logs' } },
+      { path: 'relatorio', name: 'relatorio', component: () => import('@/pages/Relatorio.vue'), meta: { title: 'Relatório' } },
     ],
   },
 ];

@@ -12,3 +12,88 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+@layer components {
+    .ui-content-wrap {
+        @apply relative mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8;
+    }
+
+    .ui-content-wrap::before {
+        content: '';
+        @apply pointer-events-none fixed inset-0 -z-10;
+        background: radial-gradient(ellipse 85% 55% at 50% -18%, rgb(167 243 208 / 0.35), transparent 55%);
+    }
+
+    .dark .ui-content-wrap::before {
+        background: radial-gradient(ellipse 65% 45% at 85% 0%, rgb(6 78 59 / 0.28), transparent 50%),
+            radial-gradient(ellipse 50% 40% at 10% 100%, rgb(30 58 138 / 0.12), transparent 45%);
+    }
+
+    .ui-card {
+        @apply rounded-2xl border border-zinc-200/90 bg-white/85 shadow-sm backdrop-blur-md transition-shadow duration-300 dark:border-zinc-800/90 dark:bg-zinc-900/60 dark:shadow-[0_1px_0_0_rgb(255_255_255/_0.04)_inset];
+    }
+
+    .ui-card-interactive:hover {
+        @apply shadow-md dark:shadow-lg dark:shadow-black/20;
+    }
+
+    .ui-label {
+        @apply block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400;
+    }
+
+    .ui-input {
+        @apply mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-sm transition-all placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-emerald-500/70 dark:focus:ring-emerald-400/10;
+    }
+
+    .ui-select {
+        @apply mt-1.5 w-full cursor-pointer rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-100 dark:focus:border-emerald-500/70 dark:focus:ring-emerald-400/10;
+    }
+
+    .ui-textarea {
+        @apply mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-3 font-mono text-[13px] leading-relaxed text-zinc-900 shadow-sm transition-all placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-emerald-500/70 dark:focus:ring-emerald-400/10;
+    }
+
+    .ui-btn-primary {
+        @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-500 hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500;
+    }
+
+    .ui-btn-secondary {
+        @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700;
+    }
+
+    .ui-btn-muted {
+        @apply inline-flex cursor-pointer items-center justify-center rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700;
+    }
+
+    .ui-btn-danger {
+        @apply inline-flex cursor-pointer items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-500 hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .ui-code {
+        @apply rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[0.7rem] font-medium text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200;
+    }
+
+    .ui-section-title {
+        @apply flex items-center gap-3 text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50;
+    }
+
+    .ui-section-desc {
+        @apply mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400;
+    }
+
+    .ui-chip-remove {
+        @apply ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-base leading-none transition-colors hover:bg-black/10 dark:hover:bg-white/10;
+    }
+
+    .ui-filter-pill {
+        @apply rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all;
+    }
+
+    .ui-filter-pill-active {
+        @apply border-emerald-500 bg-emerald-500 text-white shadow-sm dark:border-emerald-600 dark:bg-emerald-600;
+    }
+
+    .ui-filter-pill-inactive {
+        @apply border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800;
+    }
+}

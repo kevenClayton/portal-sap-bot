@@ -1,121 +1,125 @@
 <template>
-  <div class="space-y-6">
-    <h2 class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Dashboard</h2>
+  <div>
+    <PageHeader
+      title="Dashboard"
+      eyebrow="Visão geral"
+      description="Acompanhe o bot e os volumes do dia. Para iniciar, parar ou ver a actividade em tempo real, use o menu Robô."
+    />
 
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <div class="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">Status do Bot</p>
-        <p class="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-          <span :class="dashboard?.bot?.status === 'ativo' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'">
-            {{ dashboard?.bot?.status === 'ativo' ? 'Ativo' : 'Inativo' }}
-          </span>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div
+        v-for="card in statCards"
+        :key="card.key"
+        class="ui-card ui-card-interactive relative overflow-hidden p-5 sm:p-6"
+      >
+        <div
+          class="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-[0.12]"
+          :class="card.blob"
+        />
+        <p class="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          {{ card.label }}
         </p>
-      </div>
-      <div class="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">Cargas analisadas hoje</p>
-        <p class="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ dashboard?.cargas_analisadas_hoje ?? 0 }}</p>
-      </div>
-      <div class="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">Cargas capturadas hoje</p>
-        <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{{ dashboard?.cargas_capturadas_hoje ?? 0 }}</p>
-      </div>
-      <div class="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">Taxa de sucesso</p>
-        <p class="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ dashboard?.taxa_sucesso ?? 0 }}%</p>
+        <p class="mt-3 text-3xl font-bold tabular-nums tracking-tight" :class="card.valueClass">
+          {{ card.value }}
+        </p>
       </div>
     </div>
 
-    <div class="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
-      <h3 class="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Controle do Bot</h3>
-      <div class="flex flex-wrap gap-3">
-        <button
-          type="button"
-          class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-          :disabled="loading || dashboard?.bot?.status === 'ativo'"
-          @click="iniciar"
+    <div class="ui-card ui-card-interactive mt-8 p-6 sm:p-7">
+      <h2 class="ui-section-title">
+        <span
+          class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
         >
-          Iniciar
-        </button>
-        <button
-          type="button"
-          class="rounded-md bg-red-600/80 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
-          :disabled="loading || dashboard?.bot?.status !== 'ativo'"
-          @click="parar"
-        >
-          Parar
-        </button>
-        <button
-          type="button"
-          class="rounded-md border border-zinc-300 bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-200 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-          :disabled="loading"
-          @click="reiniciar"
-        >
-          Reiniciar
-        </button>
-      </div>
-      <p v-if="erro" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ erro }}</p>
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M8.25 3v2.25M15.75 3v2.25M3 18.75h18M4.5 19.5h15M4.5 14.25h15M4.5 9h15M6.75 6.75h10.5a1.5 1.5 0 011.5 1.5v10.5a1.5 1.5 0 01-1.5 1.5H6.75a1.5 1.5 0 01-1.5-1.5V8.25a1.5 1.5 0 011.5-1.5z"
+            />
+          </svg>
+        </span>
+        Controlo do robô
+      </h2>
+      <p class="ui-section-desc mb-6 max-w-xl">
+        O arranque, a paragem e a vista em tempo real dos eventos do worker estão na página
+        <strong class="text-zinc-800 dark:text-zinc-200">Robô</strong>: inicia o processo e segue a actividade como num terminal.
+      </p>
+      <router-link
+        to="/robo"
+        class="ui-btn-primary inline-flex items-center gap-2"
+      >
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+        </svg>
+        Abrir Robô
+      </router-link>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import PageHeader from '@/components/PageHeader.vue';
 
 const dashboard = ref(null);
-const loading = ref(false);
-const erro = ref('');
+
+const statCards = computed(() => {
+  const d = dashboard.value;
+  const ativo = d?.bot?.status === 'ativo';
+  return [
+    {
+      key: 'status',
+      label: 'Status',
+      value: ativo ? 'Ativo' : 'Inativo',
+      valueClass: ativo ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400',
+      blob: 'bg-emerald-500',
+    },
+    {
+      key: 'analisadas',
+      label: 'Analisadas hoje',
+      value: d?.cargas_analisadas_hoje ?? 0,
+      valueClass: 'text-zinc-900 dark:text-zinc-100',
+      blob: 'bg-zinc-400',
+    },
+    {
+      key: 'capturadas',
+      label: 'Capturadas hoje',
+      value: d?.cargas_capturadas_hoje ?? 0,
+      valueClass: 'text-emerald-600 dark:text-emerald-400',
+      blob: 'bg-emerald-500',
+    },
+    {
+      key: 'simuladas',
+      label: 'Modo teste hoje',
+      value: d?.cargas_simuladas_hoje ?? 0,
+      valueClass: 'text-violet-600 dark:text-violet-400',
+      blob: 'bg-violet-500',
+    },
+    {
+      key: 'taxa',
+      label: 'Taxa de sucesso',
+      value: `${d?.taxa_sucesso ?? 0}%`,
+      valueClass: 'text-zinc-900 dark:text-zinc-100',
+      blob: 'bg-sky-500',
+    },
+  ];
+});
 
 async function carregar() {
   try {
     const { data } = await axios.get('/api/dashboard');
     dashboard.value = data;
   } catch (e) {
-    dashboard.value = { cargas_analisadas_hoje: 0, cargas_capturadas_hoje: 0, taxa_sucesso: 0 };
-  }
-}
-
-async function iniciar() {
-  if (!dashboard.value?.bot?.id) return;
-  loading.value = true;
-  erro.value = '';
-  try {
-    await axios.post(`/api/bots/${dashboard.value.bot.id}/iniciar`);
-    await carregar();
-  } catch (e) {
-    erro.value = e.response?.data?.message || 'Erro ao iniciar';
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function parar() {
-  if (!dashboard.value?.bot?.id) return;
-  loading.value = true;
-  erro.value = '';
-  try {
-    await axios.post(`/api/bots/${dashboard.value.bot.id}/parar`);
-    await carregar();
-  } catch (e) {
-    erro.value = e.response?.data?.message || 'Erro ao parar';
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function reiniciar() {
-  if (!dashboard.value?.bot?.id) return;
-  loading.value = true;
-  erro.value = '';
-  try {
-    await axios.post(`/api/bots/${dashboard.value.bot.id}/reiniciar`);
-    await carregar();
-  } catch (e) {
-    erro.value = e.response?.data?.message || 'Erro ao reiniciar';
-  } finally {
-    loading.value = false;
+    dashboard.value = {
+      cargas_analisadas_hoje: 0,
+      cargas_capturadas_hoje: 0,
+      cargas_simuladas_hoje: 0,
+      taxa_sucesso: 0,
+    };
   }
 }
 
 onMounted(carregar);
 </script>
+

@@ -16,7 +16,7 @@
     <script>
       (function() {
         var t = localStorage.getItem('portal-sap-bot-theme');
-        document.documentElement.classList.toggle('dark', t !== 'light');
+        document.documentElement.classList.toggle('dark', t === 'dark');
       })();
     </script>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))

@@ -1,8 +1,15 @@
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch } from 'vue';
 
 const STORAGE_KEY = 'portal-sap-bot-theme';
 
-const isDark = ref(true);
+function readStoredDark() {
+  if (typeof localStorage === 'undefined') {
+    return false;
+  }
+  return localStorage.getItem(STORAGE_KEY) === 'dark';
+}
+
+const isDark = ref(readStoredDark());
 
 function applyTheme(dark) {
   const html = document.documentElement;
@@ -11,29 +18,24 @@ function applyTheme(dark) {
   } else {
     html.classList.remove('dark');
   }
-  isDark.value = dark;
 }
+
+watch(isDark, (v) => applyTheme(v), { immediate: true, flush: 'sync' });
 
 export function useTheme() {
   function toggle() {
     isDark.value = !isDark.value;
     localStorage.setItem(STORAGE_KEY, isDark.value ? 'dark' : 'light');
-    applyTheme(isDark.value);
   }
 
   function setDark(dark) {
-    isDark.value = !!dark;
-    localStorage.setItem(STORAGE_KEY, dark ? 'dark' : 'light');
-    applyTheme(isDark.value);
+    const next = !!dark;
+    if (isDark.value === next) {
+      return;
+    }
+    isDark.value = next;
+    localStorage.setItem(STORAGE_KEY, next ? 'dark' : 'light');
   }
-
-  onMounted(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const dark = saved === 'light' ? false : true;
-    applyTheme(dark);
-  });
-
-  watch(isDark, (v) => applyTheme(v), { flush: 'sync' });
 
   return {
     isDark,

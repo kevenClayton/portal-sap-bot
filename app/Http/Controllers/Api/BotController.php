@@ -11,7 +11,8 @@ class BotController extends Controller
 {
     public function index(): JsonResponse
     {
-        $bots = Bot::with('parametros')->get();
+        $bots = Bot::with(['parametros.cidadesAceitas', 'parametros.regrasCidades'])->get();
+
         return response()->json($bots);
     }
 
@@ -24,12 +25,14 @@ class BotController extends Controller
             'horario_fim' => 'nullable|date_format:H:i',
         ]);
         $bot = Bot::create($validated);
+
         return response()->json($bot, 201);
     }
 
     public function show(Bot $bot): JsonResponse
     {
-        $bot->load('parametros');
+        $bot->load(['parametros.cidadesAceitas', 'parametros.regrasCidades']);
+
         return response()->json($bot);
     }
 
@@ -42,24 +45,28 @@ class BotController extends Controller
             'horario_fim' => 'nullable|date_format:H:i',
         ]);
         $bot->update($validated);
+
         return response()->json($bot);
     }
 
     public function destroy(Bot $bot): JsonResponse
     {
         $bot->delete();
+
         return response()->json(null, 204);
     }
 
     public function iniciar(Bot $bot): JsonResponse
     {
         $bot->update(['status' => 'ativo']);
+
         return response()->json(['message' => 'Bot iniciado', 'bot' => $bot]);
     }
 
     public function parar(Bot $bot): JsonResponse
     {
         $bot->update(['status' => 'inativo']);
+
         return response()->json(['message' => 'Bot parado', 'bot' => $bot]);
     }
 
@@ -68,6 +75,7 @@ class BotController extends Controller
         $bot->update(['status' => 'inativo']);
         // Worker externo deve detectar e reiniciar; aqui apenas ciclo stop/start
         $bot->update(['status' => 'ativo']);
+
         return response()->json(['message' => 'Bot reiniciado', 'bot' => $bot]);
     }
 }

@@ -1,8 +1,12 @@
 """
 Cliente HTTP para comunicação com a API Laravel (rotas do worker).
 """
+import sys
+
 import requests
 from config import API_BASE, WORKER_TOKEN
+
+_api_unreachable_warned = False
 
 
 def headers():
@@ -55,7 +59,8 @@ def patch_execucao(execucao_id, **kwargs):
 
 
 def post_log(nivel, evento, mensagem=None, bot_id=None, contexto=None):
-    """Registra log no sistema."""
+    """Registra log no sistema. Não interrompe o worker se a API estiver offline."""
+    global _api_unreachable_warned
     data = {
         "nivel": nivel,
         "evento": evento,
@@ -63,6 +68,22 @@ def post_log(nivel, evento, mensagem=None, bot_id=None, contexto=None):
         "bot_id": bot_id,
         "contexto": contexto or {},
     }
-    r = requests.post(f"{API_BASE}/api/worker/logs", json=data, headers=headers(), timeout=5)
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.post(f"{API_BASE}/api/worker/logs", json=data, headers=headers(), timeout=5)
+        r.raise_for_status()
+        return r.json()
+    except requests.RequestException:
+        if not _api_unreachable_warned:
+            _api_unreachable_warned = True
+            print(
+                "\n[worker] Não foi possível ligar à API Laravel.",
+                file=sys.stderr,
+            )
+            print(f"  URL tentada: {API_BASE}/api/worker/logs", file=sys.stderr)
+            print(
+                "  Ajuste BOT_API_BASE no ficheiro worker/.env para o URL real do site "
+                "(ex.: http://portal-sap-bot.test com Laragon, ou http://127.0.0.1:8000 com php artisan serve).\n",
+                file=sys.stderr,
+            )
+        print(f"[worker] log local: [{nivel}] {evento} — {mensagem or ''}", file=sys.stderr)
+        return None

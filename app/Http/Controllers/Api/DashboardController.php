@@ -16,6 +16,7 @@ class DashboardController extends Controller
 
         $cargasAnalisadasHoje = Carga::hoje()->count();
         $cargasCapturadasHoje = Carga::hoje()->capturadas()->count();
+        $cargasSimuladasHoje = Carga::hoje()->simuladas()->count();
         $totalAnalisadas = Carga::count();
         $totalCapturadas = Carga::capturadas()->count();
         $taxaSucesso = $totalAnalisadas > 0
@@ -32,6 +33,7 @@ class DashboardController extends Controller
             ] : null,
             'cargas_analisadas_hoje' => $cargasAnalisadasHoje,
             'cargas_capturadas_hoje' => $cargasCapturadasHoje,
+            'cargas_simuladas_hoje' => $cargasSimuladasHoje,
             'cargas_capturadas_total' => $totalCapturadas,
             'taxa_sucesso' => $taxaSucesso,
         ]);
