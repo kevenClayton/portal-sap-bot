@@ -116,7 +116,6 @@ def run_ciclo(
                 contexto={"rfq_uuid": rfq_uuid},
             )
             continue
-
         t0 = time.time()
         try:
             term("Aceitar RFQ", rfq_id, "uuid", str(rfq_uuid)[:13] + "…")
