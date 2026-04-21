@@ -1,0 +1,53 @@
+name: "Homologacao"
+
+on:
+  push:
+    branches:
+      - homologacao
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Git Push SFTP
+        uses: addnab/docker-run-action@v3
+        with:
+          image: rafaelarcanjo/git-sftp:alpine-3.15-7.81.0_5
+          options: -v ${{ github.workspace }}:/git -w /git
+          run: |
+              echo '${{ secrets.PRIVATE_KEY }}' > /private.key
+              chmod 400 /private.key
+
+              git config --global --add safe.directory $(pwd)
+              git config git-ftp.url sftp://${{ secrets.HOSTNAME }}:${{ secrets.SSH_PORT }}/var/www/api
+              git config git-ftp.user ${{ secrets.USERNAME }}
+              git config git-ftp.privatekey "/private.key"
+              git config git-ftp.passphrase "${{ secrets.PASSPHRASE }}"
+              git config git-ftp.syncroot .
+              git ftp push --key "/private.key" --insecure --auto-init
+
+      - name: Install
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOSTNAME }}
+          username: ${{ secrets.USERNAME }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+          key: ${{ secrets.PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd /var/www/homologacaoapi
+            export HOME=/var/www/homologacaoapi
+            export XDG_CONFIG_HOME=/var/www/homologacaoapi/.config
+            mkdir -p "$XDG_CONFIG_HOME"
+            php7.4 composer.phar install
+            php7.4 artisan migrate
+            npm -f install
+            npm run prod
+            php7.4 artisan changelog:create-draft --title="Homologação $(date +%Y-%m-%d\ %H:%M)"

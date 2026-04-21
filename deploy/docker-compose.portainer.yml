@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: portal-sap-bot-app
+    restart: unless-stopped
+    env_file:
+      - .env.portainer
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - app-storage:/var/www/html/storage
+      - app-bootstrap-cache:/var/www/html/bootstrap/cache
+
+  queue:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: portal-sap-bot-queue
+    restart: unless-stopped
+    env_file:
+      - .env.portainer
+    depends_on:
+      - app
+    command: php artisan queue:work --tries=1 --timeout=0
+    volumes:
+      - app-storage:/var/www/html/storage
+      - app-bootstrap-cache:/var/www/html/bootstrap/cache
+
+  worker:
+    build:
+      context: ..
+      dockerfile: worker/Dockerfile
+    container_name: portal-sap-bot-worker
+    restart: unless-stopped
+    env_file:
+      - .env.worker.portainer
+    depends_on:
+      - app
+    shm_size: 1gb
+
+volumes:
+  app-storage:
+  app-bootstrap-cache:
