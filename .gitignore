@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Ambiente Portainer (não versionar segredos)
+/deploy/.env.portainer
+/deploy/.env.worker.portainer

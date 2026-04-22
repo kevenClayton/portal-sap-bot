@@ -1,3 +1,61 @@
+# Variáveis vêm do ambiente da Stack no Portainer (sem ficheiro .env no Git).
+# Em "Environment variables", define as mesmas chaves que no deploy/.env.portainer.example
+# e as do worker (SAP_*, BOT_API_BASE, etc.).
+
+x-laravel-env: &laravel-env
+  APP_NAME: ${APP_NAME:-Bot SAP}
+  APP_ENV: ${APP_ENV:-production}
+  APP_KEY: ${APP_KEY:-}
+  APP_DEBUG: ${APP_DEBUG:-false}
+  APP_URL: ${APP_URL:-http://localhost:8000}
+  APP_LOCALE: ${APP_LOCALE:-pt_BR}
+  APP_FALLBACK_LOCALE: ${APP_FALLBACK_LOCALE:-pt_BR}
+  APP_FAKER_LOCALE: ${APP_FAKER_LOCALE:-pt_BR}
+  LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+  LOG_STACK: ${LOG_STACK:-single}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DB_CONNECTION: ${DB_CONNECTION:-sqlite}
+  DB_HOST: ${DB_HOST:-127.0.0.1}
+  DB_PORT: ${DB_PORT:-3306}
+  DB_DATABASE: ${DB_DATABASE:-}
+  DB_USERNAME: ${DB_USERNAME:-}
+  DB_PASSWORD: ${DB_PASSWORD:-}
+  DB_CHARSET: ${DB_CHARSET:-utf8mb4}
+  DB_COLLATION: ${DB_COLLATION:-utf8mb4_unicode_ci}
+  DB_FOREIGN_KEYS: ${DB_FOREIGN_KEYS:-true}
+  MYSQL_ATTR_SSL_CA: ${MYSQL_ATTR_SSL_CA:-}
+  SESSION_DRIVER: ${SESSION_DRIVER:-database}
+  SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
+  SESSION_ENCRYPT: ${SESSION_ENCRYPT:-false}
+  SESSION_PATH: ${SESSION_PATH:-/}
+  SESSION_DOMAIN: ${SESSION_DOMAIN:-}
+  BROADCAST_CONNECTION: ${BROADCAST_CONNECTION:-log}
+  FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
+  QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
+  CACHE_STORE: ${CACHE_STORE:-database}
+  MAIL_MAILER: ${MAIL_MAILER:-log}
+  MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@localhost}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Bot SAP}
+  WORKER_API_TOKEN: ${WORKER_API_TOKEN:-}
+  SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost,127.0.0.1}
+  WHATSAPP_NOTIFY_URL: ${WHATSAPP_NOTIFY_URL:-}
+  WHATSAPP_NOTIFY_TOKEN: ${WHATSAPP_NOTIFY_TOKEN:-}
+
+x-worker-env: &worker-env
+  BOT_API_BASE: ${BOT_API_BASE:-http://app:8000}
+  WORKER_API_TOKEN: ${WORKER_API_TOKEN:-}
+  SAP_BASE_URL: ${SAP_BASE_URL:-}
+  SAP_LOGIN_URL: ${SAP_LOGIN_URL:-}
+  SAP_DOMAIN: ${SAP_DOMAIN:-BMS}
+  SAP_CLIENT: ${SAP_CLIENT:-310}
+  SAP_USER: ${SAP_USER:-}
+  SAP_PASSWORD: ${SAP_PASSWORD:-}
+  SAP_ODATA_EXPAND: ${SAP_ODATA_EXPAND:-}
+  SAP_BATCH_USE_CHANGESET: ${SAP_BATCH_USE_CHANGESET:-1}
+  BOT_INTERVAL: ${BOT_INTERVAL:-60}
+  HEADLESS: ${HEADLESS:-1}
+  WORKER_MIRROR_TERMINAL: ${WORKER_MIRROR_TERMINAL:-1}
+
 services:
   app:
     build:
@@ -5,8 +63,7 @@ services:
       dockerfile: Dockerfile
     container_name: portal-sap-bot-app
     restart: unless-stopped
-    env_file:
-      - .env.portainer
+    environment: *laravel-env
     ports:
       - "${APP_PORT:-8000}:8000"
     volumes:
@@ -19,8 +76,7 @@ services:
       dockerfile: Dockerfile
     container_name: portal-sap-bot-queue
     restart: unless-stopped
-    env_file:
-      - .env.portainer
+    environment: *laravel-env
     depends_on:
       - app
     command: php artisan queue:work --tries=1 --timeout=0
@@ -34,8 +90,7 @@ services:
       dockerfile: worker/Dockerfile
     container_name: portal-sap-bot-worker
     restart: unless-stopped
-    env_file:
-      - .env.worker.portainer
+    environment: *worker-env
     depends_on:
       - app
     shm_size: 1gb
