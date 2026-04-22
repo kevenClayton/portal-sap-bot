@@ -15,6 +15,9 @@ if [ -z "${APP_KEY:-}" ]; then
   php artisan key:generate --force
 fi
 
+# Evita usar config em cache de um arranque antigo (ex.: sqlite) quando o .env real é MySQL
+php artisan config:clear || true
+
 php artisan migrate --force
 php artisan optimize
 
