@@ -8,13 +8,17 @@ import { useAuth } from '@/composables/useAuth';
 axios.defaults.baseURL = '';
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 axios.defaults.withCredentials = true;
-const token = document.head.querySelector('meta[name="csrf-token"]');
-if (token) {
-    axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
-}
+axios.defaults.xsrfCookieName = 'XSRF-TOKEN';
+axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
 axios.interceptors.response.use(
     (r) => r,
-    (err) => {
+    async (err) => {
+        if (err.response?.status === 419 && err.config && !err.config._csrfRetried) {
+            err.config._csrfRetried = true;
+            await axios.get('/sanctum/csrf-cookie');
+            return axios(err.config);
+        }
+
         if (err.response?.status === 401) {
             useAuth().resetAuth();
         }
