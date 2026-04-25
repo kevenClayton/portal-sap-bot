@@ -12,6 +12,8 @@
 | `MYSQL_ATTR_SSL_CA` | Só se o MySQL exigir SSL: caminho para o ficheiro CA **dentro** da imagem (muitas vezes vazio). |
 | `WORKER_API_TOKEN` | Token longo e aleatório; **igual** ao do worker. Ex.: `openssl rand -hex 32`. |
 | `SANCTUM_STATEFUL_DOMAINS` | Lista de **hostnames** do browser (sem `https://`), separados por vírgula. Tem de incluir o host de `APP_URL` (ex. `bot.meudominio.com`). |
+| `MAIL_*` | O compose passa `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SCHEME`, `MAIL_URL` ao container. Sem isto no ambiente da stack, o Laravel fica com SMTP por defeito (`127.0.0.1:2525`) e **não envia**. Laravel 12: use `MAIL_SCHEME` (porta 587 → deixe vazio; 465 → `smtps`). `MAIL_ENCRYPTION` antigo **não** é lido pelo `config/mail.php` deste projeto. |
+| E-mails de carga | No painel, preencher **emails_notificacao** nos parâmetros do bot. |
 
 ### `deploy/.env.worker.portainer` (Python)
 
