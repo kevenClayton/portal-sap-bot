@@ -1,5 +1,16 @@
 <?php
 
+$mailerPadrao = trim((string) env('MAIL_MAILER', 'log'));
+if ($mailerPadrao === '') {
+    $mailerPadrao = 'log';
+}
+
+$mailScheme = env('MAIL_SCHEME');
+$mailScheme = (is_string($mailScheme) && trim($mailScheme) !== '') ? trim($mailScheme) : null;
+
+$mailUrl = env('MAIL_URL');
+$mailUrl = (is_string($mailUrl) && trim($mailUrl) !== '') ? trim($mailUrl) : null;
+
 return [
 
     /*
@@ -14,7 +25,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => $mailerPadrao,
 
     /*
     |--------------------------------------------------------------------------
@@ -39,8 +50,8 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
-            'url' => env('MAIL_URL'),
+            'scheme' => $mailScheme,
+            'url' => $mailUrl,
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),

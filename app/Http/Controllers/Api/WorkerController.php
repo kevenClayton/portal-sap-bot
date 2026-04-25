@@ -11,11 +11,15 @@ use App\Support\BotLogBuffer;
 use App\Services\WhatsappCargaNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class WorkerController extends Controller
 {
+    /** Não reenviar notificação (e-mail/WhatsApp) para a mesma carga+estado antes deste intervalo. */
+    private const MINUTOS_COOLDOWN_NOTIFICACAO_CARGA = 240;
+
     public function bot(): JsonResponse
     {
         $bot = Bot::where('status', 'ativo')->with(['parametros.cidadesAceitas', 'parametros.regrasCidades'])->first();
@@ -90,16 +94,33 @@ class WorkerController extends Controller
         ]);
 
         $uuid = isset($validated['rfq_uuid']) && $validated['rfq_uuid'] !== ''
-            ? $validated['rfq_uuid']
+            ? (string) $validated['rfq_uuid']
             : null;
 
-        $previous = $uuid
-            ? Carga::query()->where('rfq_uuid', $uuid)->first()
+        $rfqId = isset($validated['rfq_id']) && $validated['rfq_id'] !== ''
+            ? (string) $validated['rfq_id']
             : null;
 
-        if ($uuid) {
+        $botId = isset($validated['bot_id']) && $validated['bot_id'] !== ''
+            ? (int) $validated['bot_id']
+            : null;
+
+        $previous = null;
+        $carga = null;
+
+        if ($uuid !== null) {
+            $previous = Carga::query()->where('rfq_uuid', $uuid)->first();
             $carga = Carga::query()->updateOrCreate(
                 ['rfq_uuid' => $uuid],
+                $validated
+            );
+        } elseif ($rfqId !== null && $botId !== null) {
+            $previous = Carga::query()
+                ->where('bot_id', $botId)
+                ->where('rfq_id', $rfqId)
+                ->first();
+            $carga = Carga::query()->updateOrCreate(
+                ['bot_id' => $botId, 'rfq_id' => $rfqId],
                 $validated
             );
         } else {
@@ -131,24 +152,56 @@ class WorkerController extends Controller
         $modoTeste = $carga->status === 'simulada';
 
         $emails = $param->emails_notificacao;
+        $listaEmails = [];
         if (is_array($emails) && $emails !== []) {
-            $emails = array_values(array_filter(array_map('trim', $emails)));
-            if ($emails !== []) {
-                try {
-                    Mail::to($emails)->send(new CargaNotificacaoMail($carga, $modoTeste));
-                } catch (\Throwable $e) {
-                    Log::warning('Falha ao enviar e-mail de carga: '.$e->getMessage(), [
-                        'carga_id' => $carga->id,
-                        'rfq_id' => $carga->rfq_id,
-                    ]);
-                }
-            }
+            $listaEmails = array_values(array_filter(array_map('trim', $emails)));
         }
 
         $whats = $param->whatsapp_numeros;
-        if (is_array($whats) && $whats !== []) {
-            WhatsappCargaNotifier::notify($carga, $whats, $modoTeste);
+        $listaWhats = is_array($whats) && $whats !== [] ? $whats : [];
+
+        if ($listaEmails === [] && $listaWhats === []) {
+            return;
         }
+
+        $chaveDedupe = $this->chaveDedupeNotificacaoCarga($carga);
+        if (! Cache::add($chaveDedupe, 1, now()->addMinutes(self::MINUTOS_COOLDOWN_NOTIFICACAO_CARGA))) {
+            return;
+        }
+
+        try {
+            if ($listaEmails !== []) {
+                Mail::to($listaEmails)->send(new CargaNotificacaoMail($carga, $modoTeste));
+            }
+
+            if ($listaWhats !== []) {
+                WhatsappCargaNotifier::notify($carga, $listaWhats, $modoTeste);
+            }
+        } catch (\Throwable $e) {
+            Cache::forget($chaveDedupe);
+            Log::warning('Falha ao enviar notificação de carga: '.$e->getMessage(), [
+                'carga_id' => $carga->id,
+                'rfq_id' => $carga->rfq_id,
+            ]);
+        }
+    }
+
+    private function chaveDedupeNotificacaoCarga(Carga $carga): string
+    {
+        $referenciaRfq = $carga->rfq_uuid !== null && $carga->rfq_uuid !== ''
+            ? 'u:'.sha1((string) $carga->rfq_uuid)
+            : (
+                $carga->rfq_id !== null && $carga->rfq_id !== ''
+                    ? 'r:'.sha1((string) $carga->rfq_id)
+                    : 'c:'.(string) $carga->id
+            );
+
+        return sprintf(
+            'carga_notif:%d:%s:%s',
+            (int) $carga->bot_id,
+            $referenciaRfq,
+            (string) $carga->status
+        );
     }
 
     public function storeExecucao(Request $request): JsonResponse
