@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\CargaNotificacaoMail;
 use App\Models\Bot;
-use App\Models\BotLog;
 use App\Models\Carga;
 use App\Models\Execucao;
+use App\Support\BotLogBuffer;
 use App\Services\WhatsappCargaNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -193,7 +193,7 @@ class WorkerController extends Controller
             'mensagem' => 'nullable|string',
             'contexto' => 'nullable|array',
         ]);
-        $log = BotLog::registrar(
+        $log = BotLogBuffer::append(
             $validated['bot_id'] ?? null,
             $validated['nivel'],
             $validated['evento'],
