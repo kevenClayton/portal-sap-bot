@@ -14,7 +14,7 @@ from requests.cookies import RequestsCookieJar
 from urllib.parse import urljoin
 
 from api_client import post_log
-from terminal_log import term
+from terminal_log import log_tecnico, term
 from config import (
     SAP_BASE_URL,
     SAP_BATCH_USE_CHANGESET,
@@ -262,11 +262,40 @@ def _build_batch_accept_body(rfq_uuid: str) -> tuple[str, str]:
     return body, batch_b
 
 
+def _batch_inner_http_codes(response_text: str) -> list[int]:
+    """Códigos HTTP das partes internas da resposta multipart $batch."""
+    if not response_text:
+        return []
+    return [int(m.group(1)) for m in re.finditer(r"HTTP/\d\.\d\s+(\d+)", response_text)]
+
+
+def _sap_odata_error_from_body(response_text: str) -> dict:
+    """Extrai code/message do XML de erro OData (resposta SAP)."""
+    out: dict = {}
+    if not response_text:
+        return out
+    code_match = re.search(r"<code[^>]*>([^<]+)</code>", response_text, re.I)
+    if code_match:
+        out["sap_error_code"] = code_match.group(1).strip()
+    message_match = re.search(r"<message[^>]*>([^<]*)</message>", response_text, re.I)
+    if message_match:
+        out["sap_error_message"] = message_match.group(1).strip()
+    return out
+
+
+def _truncate_debug_text(text: str, max_chars: int) -> str:
+    if not text:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + f"\n… [truncado: {len(text)} caracteres no total]"
+
+
 def _batch_http_response_ok(response_text: str) -> bool:
     """Avalia códigos HTTP das partes internas da resposta $batch."""
     if not response_text:
         return False
-    codes = [int(m.group(1)) for m in re.finditer(r"HTTP/\d\.\d\s+(\d+)", response_text)]
+    codes = _batch_inner_http_codes(response_text)
     if codes:
         if any(c >= 400 for c in codes):
             return False
@@ -286,6 +315,8 @@ def accept_carga(
     cookie_list: Optional[list] = None,
     referer: Optional[str] = None,
     sap_client: Optional[str] = None,
+    rfq_id: Optional[str] = None,
+    bot_id: Optional[int] = None,
 ):
     """
     Aceita uma RFQ via OData $batch → AcceptRFQ com RequestForQuotationUUID.
@@ -334,23 +365,85 @@ def accept_carga(
         term("$batch (dict) HTTP", r.status_code)
 
     text = r.text or ""
+    inner_codes = _batch_inner_http_codes(text)
+    sap_err = _sap_odata_error_from_body(text)
+
+    def _contexto_falha_batch(extra: dict) -> dict:
+        base = {
+            "rfq_uuid": str(rfq_uuid),
+            "rfq_id": rfq_id,
+            "batch_url": getattr(r, "url", None) or batch_url,
+            "http_status": r.status_code,
+            "sap_client_param": sc,
+            "inner_http_statuses": inner_codes,
+            **sap_err,
+        }
+        base.update(extra)
+        return base
+
     if r.status_code not in (200, 202):
+        corpo_api = _truncate_debug_text(text, 6000)
+        log_tecnico(
+            "AcceptRFQ $batch — HTTP fora de 200/202",
+            f"url={getattr(r, 'url', batch_url)}\nstatus={r.status_code}\n"
+            f"inner_http_statuses={inner_codes}\n{sap_err}\n\n{_truncate_debug_text(text, 100000)}",
+        )
         post_log(
             "error",
             "erro_api",
             "Não foi possível confirmar a aceitação da carga no sistema. Contacte o suporte informático.",
+            bot_id=bot_id,
+            contexto=_contexto_falha_batch({"batch_body_preview": corpo_api}),
         )
-        term("$batch erro corpo (início):", text[:300].replace("\n", " "))
+        term(
+            "$batch HTTP",
+            r.status_code,
+            "inner",
+            inner_codes,
+            "SAP",
+            sap_err or "(sem XML de erro)",
+            "corpo (início):",
+            text[:800].replace("\n", " "),
+        )
         r.raise_for_status()
 
     if not _batch_http_response_ok(text):
+        corpo_api = _truncate_debug_text(text, 6000)
+        log_tecnico(
+            "AcceptRFQ $batch — corpo multipart com falha (ex.: 404 na parte interna)",
+            f"url={getattr(r, 'url', batch_url)}\nstatus={r.status_code}\n"
+            f"inner_http_statuses={inner_codes}\n{sap_err}\n\n{_truncate_debug_text(text, 100000)}",
+        )
         post_log(
             "error",
             "erro_api",
             "O sistema não confirmou a aceitação da carga. Contacte o suporte informático.",
+            bot_id=bot_id,
+            contexto=_contexto_falha_batch({"batch_body_preview": corpo_api}),
         )
-        term("$batch corpo indica falha (início):", text[:400].replace("\n", " "))
-        raise RuntimeError("A aceitação da carga não foi confirmada pelo sistema.")
+        term(
+            "$batch multipart com falha — HTTP externo",
+            r.status_code,
+            "partes internas",
+            inner_codes,
+            "SAP OData",
+            sap_err or "(sem XML de erro)",
+            "corpo (início):",
+            text[:1200].replace("\n", " "),
+        )
+        detalhe_sap = ""
+        if sap_err.get("sap_error_code") or sap_err.get("sap_error_message"):
+            detalhe_sap = (
+                f"SAP: {sap_err.get('sap_error_code', '')} {sap_err.get('sap_error_message', '')}"
+            ).strip()
+        partes_msg = [
+            "A aceitação da carga não foi confirmada pelo sistema.",
+            f"HTTP {r.status_code}, partes internas {inner_codes}.",
+        ]
+        if detalhe_sap:
+            partes_msg.append(detalhe_sap)
+        partes_msg.append("Ver worker_tecnico.log para o corpo completo do $batch.")
+        raise RuntimeError(" ".join(partes_msg))
 
     term("AcceptRFQ OK para uuid", str(rfq_uuid)[:36])
     return {"raw": text[:2000]} if text else {}

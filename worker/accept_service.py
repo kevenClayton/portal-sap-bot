@@ -127,6 +127,8 @@ def run_ciclo(
                 cookie_list=cookie_list,
                 referer=sap_referer,
                 sap_client=sap_client,
+                rfq_id=rfq_id,
+                bot_id=bot_id,
             )
             tempo_ms = int((time.time() - t0) * 1000)
             term("RFQ", rfq_id, "aceite em", tempo_ms, "ms")
@@ -143,7 +145,13 @@ def run_ciclo(
             term_exc(f"Erro ao aceitar RFQ {rfq_id}:", e)
             ignoradas += 1
             post_carga({**base_payload, "status": "erro"})
-            post_log("error", "erro_api", str(e), bot_id=bot_id, contexto={"rfq_uuid": rfq_uuid})
+            post_log(
+                "error",
+                "erro_api",
+                str(e),
+                bot_id=bot_id,
+                contexto={"rfq_uuid": rfq_uuid, "rfq_id": rfq_id},
+            )
 
     term("run_ciclo fim: analisadas", analisadas, "capturadas", capturadas, "ignoradas", ignoradas, "simuladas", simuladas)
     return analisadas, capturadas, ignoradas, simuladas
