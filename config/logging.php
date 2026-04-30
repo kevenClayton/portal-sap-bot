@@ -4,6 +4,7 @@ use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
+use MarvinLabs\DiscordLogger\DiscordLogger;
 
 return [
 
@@ -79,6 +80,16 @@ return [
             'username' => env('LOG_SLACK_USERNAME', env('APP_NAME', 'Laravel')),
             'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
             'level' => env('LOG_LEVEL', 'critical'),
+            'replace_placeholders' => true,
+        ],
+
+        'discord' => [
+            'driver' => 'custom',
+            'via' => DiscordLogger::class,
+            'level' => env('LOG_DISCORD_LEVEL', 'error'),
+            'url' => trim((string) env('LOG_DISCORD_WEBHOOK_URL', '')),
+            'username' => env('LOG_DISCORD_USERNAME', env('APP_NAME', 'Laravel')),
+            'ignore_exceptions' => env('LOG_DISCORD_IGNORE_EXCEPTIONS', false),
             'replace_placeholders' => true,
         ],
 

@@ -13,6 +13,7 @@
 | `WORKER_API_TOKEN` | Token longo e aleatório; **igual** ao do worker. Ex.: `openssl rand -hex 32`. |
 | `SANCTUM_STATEFUL_DOMAINS` | Lista de **hostnames** do browser (sem `https://`), separados por vírgula. Tem de incluir o host de `APP_URL` (ex. `bot.meudominio.com`). |
 | `MAIL_*` | O compose passa `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SCHEME`, `MAIL_URL` ao container. Sem isto no ambiente da stack, o Laravel fica com SMTP por defeito (`127.0.0.1:2525`) e **não envia**. Laravel 12: use `MAIL_SCHEME` (porta 587 → deixe vazio; 465 → `smtps`). `MAIL_ENCRYPTION` antigo **não** é lido pelo `config/mail.php` deste projeto. |
+| `LOG_DISCORD_*` | Para alerta no Discord via MarvinLabs, use `LOG_STACK=single,discord` e preencha `LOG_DISCORD_WEBHOOK_URL`. `LOG_DISCORD_LEVEL` define o nível mínimo (recomendado: `error`). |
 | E-mails de carga | No painel, preencher **emails_notificacao** nos parâmetros do bot. |
 
 ### `deploy/.env.worker.portainer` (Python)

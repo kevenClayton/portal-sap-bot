@@ -136,6 +136,20 @@ class WorkerController extends Controller
             }
         }
 
+        if ($carga->status === 'erro') {
+            Log::error(
+                'Erro ao tentar pegar carga: '.json_encode([
+                    'carga_id' => $carga->id,
+                    'bot_id' => $carga->bot_id,
+                    'rfq_id' => $carga->rfq_id,
+                    'rfq_uuid' => $carga->rfq_uuid,
+                    'origem' => $carga->origem,
+                    'destino' => $carga->destino,
+                    'dados_json' => $carga->dados_json,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            );
+        }
+
         $code = $carga->wasRecentlyCreated ? 201 : 200;
 
         return response()->json($carga, $code);
@@ -146,6 +160,13 @@ class WorkerController extends Controller
         $bot = Bot::with('parametros')->find($carga->bot_id);
         $param = $bot?->parametroAtual();
         if (! $param) {
+            Log::error(
+                'Parâmetros do bot não encontrados para notificação de carga: '.json_encode([
+                    'carga_id' => $carga->id,
+                    'bot_id' => $carga->bot_id,
+                    'status' => $carga->status,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            );
             return;
         }
 
@@ -179,7 +200,7 @@ class WorkerController extends Controller
             }
         } catch (\Throwable $e) {
             Cache::forget($chaveDedupe);
-            Log::warning('Falha ao enviar notificação de carga: '.$e->getMessage(), [
+            Log::error('Falha ao enviar notificação de carga: '.$e->getMessage(), [
                 'carga_id' => $carga->id,
                 'rfq_id' => $carga->rfq_id,
             ]);

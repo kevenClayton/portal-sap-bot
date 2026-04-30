@@ -14,6 +14,9 @@ x-laravel-env: &laravel-env
   LOG_CHANNEL: ${LOG_CHANNEL:-stack}
   LOG_STACK: ${LOG_STACK:-single}
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  LOG_DISCORD_LEVEL: ${LOG_DISCORD_LEVEL:-error}
+  LOG_DISCORD_IGNORE_EXCEPTIONS: ${LOG_DISCORD_IGNORE_EXCEPTIONS:-true}
+  LOG_DISCORD_WEBHOOK_URL: ${LOG_DISCORD_WEBHOOK_URL:-}
   # Em produção via Portainer usa-se MySQL; default sqlite aqui causava 500 se a variável falhasse
   DB_CONNECTION: ${DB_CONNECTION:-mysql}
   DB_HOST: ${DB_HOST:-127.0.0.1}
