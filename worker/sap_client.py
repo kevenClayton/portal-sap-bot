@@ -1,6 +1,6 @@
 """
 Cliente HTTP para chamadas OData ao SAP (cookies de sessão + CSRF).
-Aceite de carga: POST multipart/mixed para .../TENDERING/$batch com action AcceptRFQ.
+Aceite de carga: POST multipart/mixed para .../TENDERING/$batch (Fiori: QuotationCollection + ResponseCode).
 """
 from __future__ import annotations
 
@@ -17,10 +17,14 @@ from api_client import post_log
 from terminal_log import log_tecnico, term
 from config import (
     SAP_BASE_URL,
-    SAP_BATCH_USE_CHANGESET,
     SAP_CLIENT,
     SAP_ODATA_EXPAND,
 )
+
+# Aceite de carga: multipart Fiori em SCMTMS/TENDERING (captura portal Arcelor; fixo, sem .env).
+_BATCH_INNER_POST_PATH = "QuotationCollection"
+_BATCH_RESPONSE_CODE = "AP"
+_BATCH_ACCEPT_LANGUAGE = "pt"
 
 
 def _referer_header(referer: Optional[str]) -> str:
@@ -212,51 +216,60 @@ def get_cargas(
     return data
 
 
-def _build_batch_accept_body(rfq_uuid: str) -> tuple[str, str]:
-    """
-    Monta o corpo multipart/mixed para $batch com POST AcceptRFQ + JSON.
-    Retorna (body_string, boundary_raiz).
-    """
+def _accept_batch_json_body(rfq_uuid: str) -> tuple[str, bytes]:
+    """JSON e bytes UTF-8 do corpo da parte HTTP interna (Content-Length = len(bytes))."""
     uid = str(rfq_uuid).strip()
-    payload = json.dumps({"RequestForQuotationUUID": uid}, separators=(",", ":"))
-    payload_bytes = payload.encode("utf-8")
+    payload_obj = {"RequestForQuotationUUID": uid, "ResponseCode": _BATCH_RESPONSE_CODE}
+    payload = json.dumps(payload_obj, separators=(",", ":"))
+    return payload, payload.encode("utf-8")
+
+
+def _batch_inner_http_block(post_target: str, csrf_token: str, payload_bytes: bytes) -> str:
+    """
+    Cabeçalhos da sub-requisição HTTP dentro do multipart (alinhado à captura Fiori).
+    CSRF e DataServiceVersion 2.0 repetidos na parte interna.
+    """
     content_length = len(payload_bytes)
-
-    if SAP_BATCH_USE_CHANGESET:
-        batch_b = f"batch_{uuid.uuid4().hex}"
-        changeset_b = f"changeset_{uuid.uuid4().hex}"
-        inner = (
-            f"--{changeset_b}\r\n"
-            f"Content-Type: application/http\r\n"
-            f"Content-Transfer-Encoding: binary\r\n"
-            f"\r\n"
-            f"POST AcceptRFQ HTTP/1.1\r\n"
-            f"Content-Type: application/json\r\n"
-            f"Content-Length: {content_length}\r\n"
-            f"\r\n"
-            f"{payload}\r\n"
-            f"--{changeset_b}--\r\n"
-        )
-        body = (
-            f"--{batch_b}\r\n"
-            f"Content-Type: multipart/mixed; boundary={changeset_b}\r\n"
-            f"\r\n"
-            f"{inner}"
-            f"--{batch_b}--\r\n"
-        )
-        return body, batch_b
-
-    batch_b = f"batch_{uuid.uuid4().hex}"
-    body = (
-        f"--{batch_b}\r\n"
-        f"Content-Type: application/http\r\n"
-        f"Content-Transfer-Encoding: binary\r\n"
-        f"\r\n"
-        f"POST AcceptRFQ HTTP/1.1\r\n"
+    payload = payload_bytes.decode("utf-8")
+    token_line = (csrf_token or "").strip()
+    return (
+        f"POST {post_target} HTTP/1.1\r\n"
+        f"sap-contextid-accept: header\r\n"
+        f"Accept: application/json\r\n"
+        f"Accept-Language: {_BATCH_ACCEPT_LANGUAGE}\r\n"
+        f"DataServiceVersion: 2.0\r\n"
+        f"MaxDataServiceVersion: 2.0\r\n"
+        f"x-csrf-token: {token_line}\r\n"
         f"Content-Type: application/json\r\n"
         f"Content-Length: {content_length}\r\n"
         f"\r\n"
         f"{payload}\r\n"
+    )
+
+
+def _build_batch_accept_body(rfq_uuid: str, csrf_token: str) -> tuple[str, str]:
+    """
+    Monta o corpo multipart/mixed para $batch (changeset + POST QuotationCollection, estilo Fiori).
+    Retorna (body_string, boundary_raiz).
+    """
+    uid = str(rfq_uuid).strip()
+    _, payload_bytes = _accept_batch_json_body(uid)
+    batch_b = f"batch_{uuid.uuid4().hex}"
+    changeset_b = f"changeset_{uuid.uuid4().hex}"
+    inner_http = _batch_inner_http_block(_BATCH_INNER_POST_PATH, csrf_token, payload_bytes)
+    inner = (
+        f"--{changeset_b}\r\n"
+        f"Content-Type: application/http\r\n"
+        f"Content-Transfer-Encoding: binary\r\n"
+        f"\r\n"
+        f"{inner_http}"
+        f"--{changeset_b}--\r\n"
+    )
+    body = (
+        f"--{batch_b}\r\n"
+        f"Content-Type: multipart/mixed; boundary={changeset_b}\r\n"
+        f"\r\n"
+        f"{inner}"
         f"--{batch_b}--\r\n"
     )
     return body, batch_b
@@ -319,7 +332,7 @@ def accept_carga(
     bot_id: Optional[int] = None,
 ):
     """
-    Aceita uma RFQ via OData $batch → AcceptRFQ com RequestForQuotationUUID.
+    Aceita uma RFQ via OData $batch (QuotationCollection + ResponseCode, estilo Fiori).
     `payload` é ignorado (mantido por compatibilidade com chamadas antigas).
     """
     if not rfq_uuid:
@@ -330,19 +343,31 @@ def accept_carga(
     sc = _sap_client_param(sap_client)
     if sc:
         batch_params["sap-client"] = sc
-    body, boundary = _build_batch_accept_body(rfq_uuid)
+    body, boundary = _build_batch_accept_body(rfq_uuid, csrf_token or "")
     body_bytes = body.encode("utf-8")
 
     headers = {
         "Content-Type": f"multipart/mixed; boundary={boundary}",
         "X-CSRF-Token": csrf_token or "",
-        "Accept": "multipart/mixed, application/json",
-        "OData-Version": "4.0",
+        "Accept": "multipart/mixed",
+        "DataServiceVersion": "2.0",
+        "MaxDataServiceVersion": "2.0",
         "User-Agent": user_agent or "Bot/1.0",
         "Referer": _referer_header(referer),
     }
 
-    term("AcceptRFQ $batch POST", batch_url, "params", batch_params, "uuid", str(rfq_uuid)[:36])
+    term(
+        "Aceite $batch POST",
+        batch_url,
+        "params",
+        batch_params,
+        "uuid",
+        str(rfq_uuid)[:36],
+        "inner_POST",
+        _BATCH_INNER_POST_PATH,
+        "ResponseCode",
+        _BATCH_RESPONSE_CODE,
+    )
     r = requests.post(
         batch_url,
         params=batch_params or None,
@@ -375,6 +400,8 @@ def accept_carga(
             "batch_url": getattr(r, "url", None) or batch_url,
             "http_status": r.status_code,
             "sap_client_param": sc,
+            "batch_inner_post_path": _BATCH_INNER_POST_PATH,
+            "batch_response_code": _BATCH_RESPONSE_CODE,
             "inner_http_statuses": inner_codes,
             **sap_err,
         }
@@ -384,7 +411,7 @@ def accept_carga(
     if r.status_code not in (200, 202):
         corpo_api = _truncate_debug_text(text, 6000)
         log_tecnico(
-            "AcceptRFQ $batch — HTTP fora de 200/202",
+            "Aceite $batch — HTTP fora de 200/202",
             f"url={getattr(r, 'url', batch_url)}\nstatus={r.status_code}\n"
             f"inner_http_statuses={inner_codes}\n{sap_err}\n\n{_truncate_debug_text(text, 100000)}",
         )
@@ -410,7 +437,7 @@ def accept_carga(
     if not _batch_http_response_ok(text):
         corpo_api = _truncate_debug_text(text, 6000)
         log_tecnico(
-            "AcceptRFQ $batch — corpo multipart com falha (ex.: 404 na parte interna)",
+            "Aceite $batch — corpo multipart com falha (ex.: 404 na parte interna)",
             f"url={getattr(r, 'url', batch_url)}\nstatus={r.status_code}\n"
             f"inner_http_statuses={inner_codes}\n{sap_err}\n\n{_truncate_debug_text(text, 100000)}",
         )
@@ -445,5 +472,5 @@ def accept_carga(
         partes_msg.append("Ver worker_tecnico.log para o corpo completo do $batch.")
         raise RuntimeError(" ".join(partes_msg))
 
-    term("AcceptRFQ OK para uuid", str(rfq_uuid)[:36])
+    term("Aceite RFQ OK uuid", str(rfq_uuid)[:36])
     return {"raw": text[:2000]} if text else {}

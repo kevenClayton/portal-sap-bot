@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class BotLogBuffer
 {
@@ -45,7 +46,64 @@ class BotLogBuffer
 
         self::writeBuffer($linhasFiltradas, $ttlEmMinutos);
 
+        self::espelharErroCriticoParaLogLaravel($botId, $nivel, $evento, $mensagem, $contexto);
+
         return $novoLog;
+    }
+
+    /**
+     * O buffer do painel não passa pelo Monolog; o Discord (MarvinLabs) só recebe o que for
+     * escrito em Log::*. Erros do worker (erro_api / erro_auth) espelham-se aqui para a stack
+     * configurada (ex.: single,discord).
+     */
+    private static function espelharErroCriticoParaLogLaravel(
+        ?int $botId,
+        string $nivel,
+        string $evento,
+        ?string $mensagem,
+        array $contexto
+    ): void {
+        if ($nivel !== 'error') {
+            return;
+        }
+        if (! in_array($evento, ['erro_api', 'erro_auth'], true)) {
+            return;
+        }
+        if (! filter_var(env('WORKER_ERROR_LOG_TO_LARAVEL', true), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
+        try {
+            $prefixo = $botId !== null ? "[Worker bot #{$botId}] " : '[Worker] ';
+            $linha = $prefixo."[{$evento}] ".($mensagem ?? '(sem mensagem)');
+            $resumo = self::contextoTruncadoParaWebhook($contexto, 1600);
+            Log::error($linha, $resumo === '' ? [] : ['contexto' => $resumo]);
+        } catch (\Throwable) {
+            // Não impedir o registo no buffer se o canal de log falhar.
+        }
+    }
+
+    /**
+     * JSON compacto para Discord / Monolog (evita corpo OData gigante no webhook).
+     *
+     * @param  array<string, mixed>  $contexto
+     */
+    private static function contextoTruncadoParaWebhook(array $contexto, int $maxCaracteres): string
+    {
+        if ($contexto === []) {
+            return '';
+        }
+
+        $json = json_encode($contexto, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json === false) {
+            return '';
+        }
+
+        if (strlen($json) <= $maxCaracteres) {
+            return $json;
+        }
+
+        return substr($json, 0, $maxCaracteres).'…';
     }
 
     /**

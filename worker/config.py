@@ -45,9 +45,6 @@ SAP_ODATA_EXPAND = os.getenv("SAP_ODATA_EXPAND", "").strip()
 SAP_USER = os.getenv("SAP_USER", "")
 SAP_PASSWORD = os.getenv("SAP_PASSWORD", "")
 
-# $batch: 1 = corpo com multipart interno changeset (comum no Gateway); 0 = part única tipo documentação simples
-SAP_BATCH_USE_CHANGESET = os.getenv("SAP_BATCH_USE_CHANGESET", "1").lower() in ("1", "true", "yes", "on")
-
 # Intervalo padrão entre ciclos (segundos)
 DEFAULT_INTERVAL = int(os.getenv("BOT_INTERVAL", "60"))
 
