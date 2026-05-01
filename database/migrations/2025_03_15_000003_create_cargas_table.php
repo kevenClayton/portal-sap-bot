@@ -18,7 +18,7 @@ return new class extends Migration
             $table->decimal('distancia', 12, 2)->nullable();
             $table->string('status')->default('analisada'); // analisada, capturada, ignorada, erro
             $table->json('dados_json')->nullable();
-            $table->timestamp('tempo_resposta_ms')->nullable();
+            $table->unsignedInteger('tempo_resposta_ms')->nullable();
             $table->timestamps();
         });
     }

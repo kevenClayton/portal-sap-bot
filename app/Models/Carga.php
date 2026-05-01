@@ -25,6 +25,7 @@ class Carga extends Model
             'peso' => 'decimal:2',
             'distancia' => 'decimal:2',
             'dados_json' => 'array',
+            'tempo_resposta_ms' => 'integer',
         ];
     }
 
