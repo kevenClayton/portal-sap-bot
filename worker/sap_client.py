@@ -282,7 +282,7 @@ def _batch_inner_http_codes(response_text: str) -> list[int]:
     return [int(m.group(1)) for m in re.finditer(r"HTTP/\d\.\d\s+(\d+)", response_text)]
 
 
-def _sap_odata_error_from_body(response_text: str) -> dict:
+def _sap_odata_error_xml_from_body(response_text: str) -> dict:
     """Extrai code/message do XML de erro OData (resposta SAP)."""
     out: dict = {}
     if not response_text:
@@ -294,6 +294,82 @@ def _sap_odata_error_from_body(response_text: str) -> dict:
     if message_match:
         out["sap_error_message"] = message_match.group(1).strip()
     return out
+
+
+def _extract_json_object_from_position(response_text: str, start: int) -> Optional[dict]:
+    """Primeiro objeto `{...}` balanceado a partir de `start` (ignora chaves dentro de strings)."""
+    if start < 0 or start >= len(response_text) or response_text[start] != "{":
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    quote_char: Optional[str] = None
+    for idx in range(start, len(response_text)):
+        ch = response_text[idx]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif quote_char is not None and ch == quote_char:
+                in_string = False
+                quote_char = None
+            continue
+        if ch in ('"', "'"):
+            in_string = True
+            quote_char = ch
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                chunk = response_text[start : idx + 1]
+                try:
+                    parsed = json.loads(chunk)
+                    return parsed if isinstance(parsed, dict) else None
+                except json.JSONDecodeError:
+                    return None
+    return None
+
+
+def _sap_odata_error_json_from_body(response_text: str) -> dict:
+    """Extrai code/message do JSON `{\"error\":{...}}` nas partes internas do $batch (400 SAP)."""
+    out: dict = {}
+    if not response_text:
+        return out
+    marker = '{"error"'
+    start = response_text.find(marker)
+    if start == -1:
+        marker_spaced = "{ \"error\""
+        start = response_text.find(marker_spaced)
+        if start == -1:
+            return out
+    root = _extract_json_object_from_position(response_text, start)
+    if not root:
+        return out
+    err = root.get("error")
+    if not isinstance(err, dict):
+        return out
+    code = err.get("code")
+    if code is not None and str(code).strip():
+        out["sap_error_code"] = str(code).strip()
+    message = err.get("message")
+    if isinstance(message, dict):
+        value = message.get("value")
+        if value is not None and str(value).strip():
+            out["sap_error_message"] = str(value).strip()
+    elif isinstance(message, str) and message.strip():
+        out["sap_error_message"] = message.strip()
+    return out
+
+
+def _sap_error_from_batch_body(response_text: str) -> dict:
+    """Erro SAP na resposta $batch: XML (OData clássico) ou JSON (Gateway TM)."""
+    xml_err = _sap_odata_error_xml_from_body(response_text)
+    if xml_err.get("sap_error_code") or xml_err.get("sap_error_message"):
+        return xml_err
+    return _sap_odata_error_json_from_body(response_text)
 
 
 def _truncate_debug_text(text: str, max_chars: int) -> str:
@@ -391,7 +467,18 @@ def accept_carga(
 
     text = r.text or ""
     inner_codes = _batch_inner_http_codes(text)
-    sap_err = _sap_odata_error_from_body(text)
+    sap_err = _sap_error_from_batch_body(text)
+
+    def _mensagem_api_falha_aceite() -> str:
+        mensagem_sap = (sap_err.get("sap_error_message") or "").strip()
+        codigo_sap = (sap_err.get("sap_error_code") or "").strip()
+        if mensagem_sap and codigo_sap:
+            return f"{mensagem_sap} ({codigo_sap})"
+        if mensagem_sap:
+            return mensagem_sap
+        if codigo_sap:
+            return f"Erro SAP {codigo_sap}. Contacte o suporte informático."
+        return "O sistema não confirmou a aceitação da carga. Contacte o suporte informático."
 
     def _contexto_falha_batch(extra: dict) -> dict:
         base = {
@@ -418,7 +505,7 @@ def accept_carga(
         post_log(
             "error",
             "erro_api",
-            "Não foi possível confirmar a aceitação da carga no sistema. Contacte o suporte informático.",
+            _mensagem_api_falha_aceite(),
             bot_id=bot_id,
             contexto=_contexto_falha_batch({"batch_body_preview": corpo_api}),
         )
@@ -428,7 +515,7 @@ def accept_carga(
             "inner",
             inner_codes,
             "SAP",
-            sap_err or "(sem XML de erro)",
+            sap_err or "(sem detalhe de erro)",
             "corpo (início):",
             text[:800].replace("\n", " "),
         )
@@ -437,14 +524,14 @@ def accept_carga(
     if not _batch_http_response_ok(text):
         corpo_api = _truncate_debug_text(text, 6000)
         log_tecnico(
-            "Aceite $batch — corpo multipart com falha (ex.: 404 na parte interna)",
+            "Aceite $batch — parte interna com erro HTTP (4xx/5xx ou corpo de erro)",
             f"url={getattr(r, 'url', batch_url)}\nstatus={r.status_code}\n"
             f"inner_http_statuses={inner_codes}\n{sap_err}\n\n{_truncate_debug_text(text, 100000)}",
         )
         post_log(
             "error",
             "erro_api",
-            "O sistema não confirmou a aceitação da carga. Contacte o suporte informático.",
+            _mensagem_api_falha_aceite(),
             bot_id=bot_id,
             contexto=_contexto_falha_batch({"batch_body_preview": corpo_api}),
         )
@@ -453,8 +540,8 @@ def accept_carga(
             r.status_code,
             "partes internas",
             inner_codes,
-            "SAP OData",
-            sap_err or "(sem XML de erro)",
+            "SAP",
+            sap_err or "(sem detalhe de erro)",
             "corpo (início):",
             text[:1200].replace("\n", " "),
         )
