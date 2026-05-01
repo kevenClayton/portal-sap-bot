@@ -2,10 +2,55 @@
 Serviço de aceitação de carga: orquestra regras + chamada SAP + registro na API.
 """
 import time
+from typing import Any, Optional
+
 from sap_client import get_cargas, fetch_csrf_token, accept_carga
 from rule_engine import atende_regras, modo_teste_ativo
 from api_client import post_carga, post_log
 from terminal_log import term, term_exc
+
+
+def _ordem_frete_do_item(item: Any) -> Optional[str]:
+    """
+    Identificador da ordem de frete (TOR) no payload OData da RFQ, se o serviço o expuser.
+    Nomes variam por versão/metadata do Gateway.
+    """
+    if not isinstance(item, dict):
+        return None
+    chaves_candidatas = (
+        "TransportationOrderID",
+        "TransportationOrderId",
+        "RootTransportationOrderID",
+        "RootTransportationOrderId",
+        "TorId",
+        "TORId",
+        "ParentTransportationOrderID",
+        "ParentTransportationOrderId",
+        "FreightOrderID",
+        "FreightOrderId",
+        "FreightBookingID",
+        "TransportationOrder",
+    )
+    for chave in chaves_candidatas:
+        valor = item.get(chave)
+        if valor is None:
+            continue
+        texto = str(valor).strip()
+        if not texto or texto in ("0", "000000000000000000"):
+            continue
+        return texto
+    for nav in ("TransportationOrder", "RootTransportationOrder", "FreightOrder", "ParentTransportationOrder"):
+        sub = item.get(nav)
+        if isinstance(sub, dict):
+            for chave in chaves_candidatas:
+                valor = sub.get(chave)
+                if valor is None:
+                    continue
+                texto = str(valor).strip()
+                if not texto or texto in ("0", "000000000000000000"):
+                    continue
+                return texto
+    return None
 
 
 def run_ciclo(
@@ -82,6 +127,7 @@ def run_ciclo(
         analisadas += 1
         rfq_uuid = item.get("RequestForQuotationUUID")
         rfq_id = item.get("RequestForQuotationID")
+        ordem_frete_id = _ordem_frete_do_item(item)
         origem = item.get("SourceLocationCity")
         destino = item.get("DestinationLocationCity")
         peso = item.get("GrossWeightValue")
@@ -99,26 +145,56 @@ def run_ciclo(
         }
 
         if not atende_regras(item, parametros or {}):
-            term("RFQ", rfq_id, "ignorada (regras)")
+            term(
+                "Solicitação de frete",
+                rfq_id,
+                "Ordem de frete",
+                ordem_frete_id or "—",
+                "ignorada (regras)",
+            )
             ignoradas += 1
             post_carga({**base_payload, "status": "ignorada"})
             continue
 
         if teste:
-            term("RFQ", rfq_id, "simulada (modo teste)")
+            term(
+                "Solicitação de frete",
+                rfq_id,
+                "Ordem de frete",
+                ordem_frete_id or "—",
+                "simulada (modo teste)",
+            )
             simuladas += 1
             post_carga({**base_payload, "status": "simulada"})
             post_log(
                 "info",
                 "carga_simulada",
-                f"Modo teste: RFQ {rfq_id} não capturada no SAP",
+                (
+                    f"Modo teste: solicitação {rfq_id} não capturada no SAP"
+                    + (
+                        f"; ordem de frete {ordem_frete_id}"
+                        if ordem_frete_id
+                        else ""
+                    )
+                ),
                 bot_id=bot_id,
-                contexto={"rfq_uuid": rfq_uuid},
+                contexto={
+                    "rfq_uuid": rfq_uuid,
+                    "rfq_id": rfq_id,
+                    "ordem_frete": ordem_frete_id,
+                },
             )
             continue
         t0 = time.time()
         try:
-            term("Aceitar RFQ", rfq_id, "uuid", str(rfq_uuid)[:13] + "…")
+            term(
+                "Aceitar solicitação de frete",
+                rfq_id,
+                "Ordem de frete",
+                ordem_frete_id or "—",
+                "uuid",
+                str(rfq_uuid)[:13] + "…",
+            )
             accept_carga(
                 cookies,
                 csrf,
@@ -131,18 +207,11 @@ def run_ciclo(
                 bot_id=bot_id,
             )
             tempo_ms = int((time.time() - t0) * 1000)
-            term("RFQ", rfq_id, "aceite em", tempo_ms, "ms")
-            capturadas += 1
-            post_carga(
-                {
-                    **base_payload,
-                    "status": "capturada",
-                    "tempo_resposta_ms": tempo_ms,
-                }
-            )
-            post_log("info", "carga_aceita", f"RFQ {rfq_id} aceita", bot_id=bot_id, contexto={"rfq_uuid": rfq_uuid})
         except Exception as e:
-            term_exc(f"Erro ao aceitar RFQ {rfq_id}:", e)
+            term_exc(
+                f"Erro ao aceitar solicitação {rfq_id} (ordem de frete {ordem_frete_id or '—'}):",
+                e,
+            )
             ignoradas += 1
             post_carga({**base_payload, "status": "erro"})
             post_log(
@@ -150,8 +219,66 @@ def run_ciclo(
                 "erro_api",
                 str(e),
                 bot_id=bot_id,
-                contexto={"rfq_uuid": rfq_uuid, "rfq_id": rfq_id},
+                contexto={
+                    "rfq_uuid": rfq_uuid,
+                    "rfq_id": rfq_id,
+                    "ordem_frete": ordem_frete_id,
+                },
             )
+            continue
+
+        term(
+            "Solicitação de frete",
+            rfq_id,
+            "Ordem de frete",
+            ordem_frete_id or "—",
+            "aceite em",
+            tempo_ms,
+            "ms",
+        )
+        capturadas += 1
+        try:
+            post_carga(
+                {
+                    **base_payload,
+                    "status": "capturada",
+                    "tempo_resposta_ms": tempo_ms,
+                }
+            )
+        except Exception as erro_portal:
+            term_exc(
+                f"SAP aceitou solicitação {rfq_id} mas falhou o registo no portal (post_carga):",
+                erro_portal,
+            )
+            post_log(
+                "error",
+                "erro_api",
+                str(erro_portal),
+                bot_id=bot_id,
+                contexto={
+                    "rfq_uuid": rfq_uuid,
+                    "rfq_id": rfq_id,
+                    "ordem_frete": ordem_frete_id,
+                    "fase": "post_carga_apos_aceite_sap",
+                    "tempo_resposta_ms_sap": tempo_ms,
+                },
+            )
+            continue
+
+        post_log(
+            "info",
+            "carga_aceita",
+            (
+                f"Solicitação de frete {rfq_id} aceita"
+                + (f"; ordem de frete {ordem_frete_id}" if ordem_frete_id else "")
+            ),
+            bot_id=bot_id,
+            contexto={
+                "rfq_uuid": rfq_uuid,
+                "rfq_id": rfq_id,
+                "ordem_frete": ordem_frete_id,
+            },
+        )
 
     term("run_ciclo fim: analisadas", analisadas, "capturadas", capturadas, "ignoradas", ignoradas, "simuladas", simuladas)
     return analisadas, capturadas, ignoradas, simuladas

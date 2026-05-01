@@ -173,7 +173,25 @@ function nivelCor(nivel) {
 
 function formatarContexto(ctx) {
   try {
-    return JSON.stringify(ctx);
+    const partes = [];
+    if (ctx.rfq_id != null && String(ctx.rfq_id).trim() !== '') {
+      partes.push(`Solicitação de frete: ${ctx.rfq_id}`);
+    }
+    if (ctx.ordem_frete != null && String(ctx.ordem_frete).trim() !== '') {
+      partes.push(`Ordem de frete: ${ctx.ordem_frete}`);
+    }
+    if (ctx.rfq_uuid != null && String(ctx.rfq_uuid).trim() !== '') {
+      partes.push(`UUID: ${ctx.rfq_uuid}`);
+    }
+    const extra = { ...ctx };
+    delete extra.rfq_id;
+    delete extra.ordem_frete;
+    delete extra.rfq_uuid;
+    const restoKeys = Object.keys(extra);
+    if (restoKeys.length) {
+      partes.push(JSON.stringify(extra));
+    }
+    return partes.length ? partes.join(' · ') : JSON.stringify(ctx);
   } catch {
     return String(ctx);
   }

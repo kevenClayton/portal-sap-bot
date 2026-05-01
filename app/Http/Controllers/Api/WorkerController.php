@@ -106,19 +106,38 @@ class WorkerController extends Controller
             : null;
 
         $previous = null;
-        $carga = null;
-
         if ($uuid !== null) {
             $previous = Carga::query()->where('rfq_uuid', $uuid)->first();
-            $carga = Carga::query()->updateOrCreate(
-                ['rfq_uuid' => $uuid],
-                $validated
-            );
         } elseif ($rfqId !== null && $botId !== null) {
             $previous = Carga::query()
                 ->where('bot_id', $botId)
                 ->where('rfq_id', $rfqId)
                 ->first();
+        }
+
+        // Segundo ciclo no SAP (ex.: TEND/177) não deve apagar uma captura já confirmada na BD.
+        if (
+            $previous
+            && $previous->status === 'capturada'
+            && ($validated['status'] ?? '') === 'erro'
+        ) {
+            $validated = [...$validated];
+            unset($validated['status']);
+            Log::warning('Mantém-se capturada: ignorado status=erro para RFQ já capturada.', [
+                'carga_id' => $previous->id,
+                'rfq_uuid' => $uuid,
+                'rfq_id' => $rfqId,
+            ]);
+        }
+
+        $carga = null;
+
+        if ($uuid !== null) {
+            $carga = Carga::query()->updateOrCreate(
+                ['rfq_uuid' => $uuid],
+                $validated
+            );
+        } elseif ($rfqId !== null && $botId !== null) {
             $carga = Carga::query()->updateOrCreate(
                 ['bot_id' => $botId, 'rfq_id' => $rfqId],
                 $validated
