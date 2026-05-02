@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -33,7 +34,7 @@ def _mirror_terminal_enabled() -> bool:
     return v not in ("0", "false", "no", "off")
 
 
-def _mirror_to_panel(linha_completa: str, *, nivel: str = "info") -> None:
+def _mirror_to_panel_sync(linha_completa: str, nivel: str) -> None:
     if not _mirror_terminal_enabled() or _MIRROR_BOT_ID is None:
         return
     texto = linha_completa if len(linha_completa) <= _MENSAGEM_MAX else linha_completa[:_MENSAGEM_MAX] + "…"
@@ -45,6 +46,18 @@ def _mirror_to_panel(linha_completa: str, *, nivel: str = "info") -> None:
         post_log(nivel, "terminal", texto, bot_id=_MIRROR_BOT_ID)
     except Exception:
         pass
+
+
+def _mirror_to_panel(linha_completa: str, *, nivel: str = "info") -> None:
+    """
+    Espelha para a API em thread em segundo plano para o pedido HTTP não bloquear
+    o login SAP / Playwright (evita terminal web «parado» com robô a trabalhar).
+    """
+    threading.Thread(
+        target=_mirror_to_panel_sync,
+        args=(linha_completa, nivel),
+        daemon=True,
+    ).start()
 
 
 def term(*parts: object) -> None:

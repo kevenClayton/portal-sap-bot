@@ -32,30 +32,56 @@ def _csrf_via_inpage_fetch(page, sap_client: str) -> Optional[str]:
     try:
         term("CSRF: fetch() no documento (Fiori) com sap-client =", sap_client or "(omitido)")
         result = page.evaluate(
-            """async ({ sapClient }) => {
+            """async ({ sapClient, timeoutMs }) => {
               const u = new URL('/sap/opu/odata/SCMTMS/TENDERING/', window.location.origin);
               u.searchParams.set('$format', 'json');
               if (sapClient) u.searchParams.set('sap-client', sapClient);
-              const r = await fetch(u.toString(), {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                  'X-CSRF-Token': 'Fetch',
-                  'Accept': 'application/json',
-                },
-              });
-              let textStart = '';
-              try { textStart = (await r.text()).slice(0, 800); } catch (e) { textStart = String(e); }
-              const token = r.headers.get('X-CSRF-Token') || r.headers.get('x-csrf-token') || '';
-              return {
-                status: r.status,
-                token: token,
-                url: r.url,
-                textStart: textStart,
-              };
+              const ctrl = new AbortController();
+              const limite = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : 45000;
+              const tid = setTimeout(() => ctrl.abort(), limite);
+              try {
+                const r = await fetch(u.toString(), {
+                  method: 'GET',
+                  credentials: 'include',
+                  headers: {
+                    'X-CSRF-Token': 'Fetch',
+                    'Accept': 'application/json',
+                  },
+                  signal: ctrl.signal,
+                });
+                clearTimeout(tid);
+                let textStart = '';
+                try { textStart = (await r.text()).slice(0, 800); } catch (e) { textStart = String(e); }
+                const token = r.headers.get('X-CSRF-Token') || r.headers.get('x-csrf-token') || '';
+                return {
+                  status: r.status,
+                  token: token,
+                  url: r.url,
+                  textStart: textStart,
+                  aborted: false,
+                };
+              } catch (e) {
+                clearTimeout(tid);
+                const nome = (e && e.name) ? e.name : '';
+                const msg = nome === 'AbortError' ? 'timeout_abort' : String(e);
+                return {
+                  status: 0,
+                  token: '',
+                  url: u.toString(),
+                  textStart: msg,
+                  aborted: true,
+                };
+              }
             }""",
-            {"sapClient": (sap_client or "").strip()},
+            {"sapClient": (sap_client or "").strip(), "timeoutMs": 45000},
         )
+        if result.get("aborted"):
+            term(
+                "CSRF in-page fetch: cancelado ou tempo esgotado (",
+                (result.get("textStart") or "")[:120],
+                ") — a tentar outros métodos",
+            )
+            return None
         st = int(result.get("status") or 0)
         tok = (result.get("token") or "").strip()
         term("CSRF in-page fetch: HTTP", st, "url", (result.get("url") or "")[:120])
@@ -445,6 +471,7 @@ def login(headless=True, user=None, password=None):
                 page.wait_for_load_state("domcontentloaded", timeout=30000)
             time.sleep(1.0)
             term("Após submit: URL =", page.url[:120])
+            term("Pós-login: a verificar BIG-IP / formulário e de seguida CSRF OData…")
 
             _resolver_bigip_sessao_perdida(page)
 
@@ -479,6 +506,7 @@ def login(headless=True, user=None, password=None):
             sap_client_val = (SAP_CLIENT or "").strip()
 
             # 1) fetch() no documento Fiori — mesmos cookies HttpOnly da UI; evita page.goto OData (chrome-error / ERR_INVALID_AUTH)
+            term("CSRF: pedido OData na página (timeout ~45s); se o terminal web pausar aqui, o robô continua na consola.")
             csrf = _csrf_via_inpage_fetch(page, sap_client_val)
 
             # 2) Playwright APIRequest com Referer = app Fiori + sap-client
