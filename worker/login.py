@@ -251,6 +251,42 @@ def _first_matching_locator(root, selectors, timeout_ms: int = 4000):
     return None
 
 
+def _safe_page_user_agent(page) -> str:
+    """
+    Lê navigator.userAgent com retentativas quando a página ainda está a navegar
+    (erro comum: "Execution context was destroyed").
+    """
+    fallback_user_agent = "Bot/1.0"
+    max_tentativas = 5
+    for tentativa_atual in range(1, max_tentativas + 1):
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=10000)
+        except Exception:
+            pass
+        try:
+            raw_user_agent = page.evaluate("() => navigator.userAgent")
+            texto_user_agent = str(raw_user_agent or "").strip()
+            if texto_user_agent:
+                return texto_user_agent
+        except PlaywrightError as erro_playwright:
+            mensagem_erro = str(erro_playwright)
+            term(
+                "User-Agent indisponível na tentativa",
+                tentativa_atual,
+                "/",
+                max_tentativas,
+                "-",
+                mensagem_erro[:120],
+            )
+            time.sleep(0.8)
+            continue
+        except Exception:
+            time.sleep(0.4)
+            continue
+    term("User-Agent indisponível após tentativas; a usar fallback Bot/1.0")
+    return fallback_user_agent
+
+
 def _definir_dominio_no_frame(root, dominio: str) -> bool:
     """
     Preenche domínio num único Frame. <select> pode falhar com wait visible (CSS/headless);
@@ -499,7 +535,7 @@ def login(headless=True, user=None, password=None):
             portal_url_apos_login = page.url
             term("URL do portal após login (Referer OData):", portal_url_apos_login[:180])
 
-            user_agent = page.evaluate("() => navigator.userAgent")
+            user_agent = _safe_page_user_agent(page)
             term("User-Agent:", (user_agent or "")[:80])
 
             odata_entry = urljoin(SAP_BASE_URL + "/", "sap/opu/odata/SCMTMS/TENDERING/")

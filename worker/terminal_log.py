@@ -5,6 +5,7 @@ Também grava blocos técnicos em worker/worker_tecnico.log (não enviar passwor
 from __future__ import annotations
 
 import os
+import queue
 import sys
 import threading
 import traceback
@@ -17,6 +18,11 @@ _LOG_PATH = Path(__file__).resolve().parent / "worker_tecnico.log"
 # Durante login/ciclo SAP, o worker define o bot para espelhar cada linha no terminal web.
 _MIRROR_BOT_ID: Optional[int] = None
 _MENSAGEM_MAX = 62000
+_MIRROR_QUEUE_MAX = 4000
+_MIRROR_QUEUE: "queue.Queue[tuple[str, str]]" = queue.Queue(maxsize=_MIRROR_QUEUE_MAX)
+_MIRROR_THREAD: Optional[threading.Thread] = None
+_MIRROR_THREAD_LOCK = threading.Lock()
+_MIRROR_DROPPED_TOTAL = 0
 
 
 def set_terminal_mirror_bot_id(bot_id: Optional[int]) -> None:
@@ -48,16 +54,52 @@ def _mirror_to_panel_sync(linha_completa: str, nivel: str) -> None:
         pass
 
 
+def _mirror_worker_loop() -> None:
+    while True:
+        try:
+            linha_completa, nivel = _MIRROR_QUEUE.get()
+            _mirror_to_panel_sync(linha_completa, nivel)
+        except Exception:
+            # Nunca matar a thread de espelho por falha transitória.
+            pass
+        finally:
+            _MIRROR_QUEUE.task_done()
+
+
+def _ensure_mirror_worker_started() -> None:
+    global _MIRROR_THREAD
+    if _MIRROR_THREAD is not None and _MIRROR_THREAD.is_alive():
+        return
+    with _MIRROR_THREAD_LOCK:
+        if _MIRROR_THREAD is not None and _MIRROR_THREAD.is_alive():
+            return
+        _MIRROR_THREAD = threading.Thread(
+            target=_mirror_worker_loop,
+            name="terminal-mirror-worker",
+            daemon=True,
+        )
+        _MIRROR_THREAD.start()
+
+
 def _mirror_to_panel(linha_completa: str, *, nivel: str = "info") -> None:
     """
-    Espelha para a API em thread em segundo plano para o pedido HTTP não bloquear
-    o login SAP / Playwright (evita terminal web «parado» com robô a trabalhar).
+    Enfileira para envio assíncrono por uma única thread de fundo.
+    Evita criar milhares de threads e não bloqueia o login SAP / Playwright.
     """
-    threading.Thread(
-        target=_mirror_to_panel_sync,
-        args=(linha_completa, nivel),
-        daemon=True,
-    ).start()
+    global _MIRROR_DROPPED_TOTAL
+    if not _mirror_terminal_enabled() or _MIRROR_BOT_ID is None:
+        return
+    _ensure_mirror_worker_started()
+    try:
+        _MIRROR_QUEUE.put_nowait((linha_completa, nivel))
+    except queue.Full:
+        _MIRROR_DROPPED_TOTAL += 1
+        if _MIRROR_DROPPED_TOTAL in (1, 10, 100) or _MIRROR_DROPPED_TOTAL % 1000 == 0:
+            print(
+                f"[robô] espelho terminal saturado; linhas descartadas = {_MIRROR_DROPPED_TOTAL}",
+                file=sys.stderr,
+                flush=True,
+            )
 
 
 def term(*parts: object) -> None:
