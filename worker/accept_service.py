@@ -137,6 +137,7 @@ def run_ciclo(
             "bot_id": bot_id,
             "rfq_uuid": rfq_uuid,
             "rfq_id": rfq_id,
+            "ordem_frete": ordem_frete_id,
             "origem": origem,
             "destino": destino,
             "peso": peso,

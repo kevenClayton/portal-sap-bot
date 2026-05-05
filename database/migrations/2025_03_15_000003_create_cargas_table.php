@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('rfq_uuid')->nullable()->index();
             $table->string('rfq_id')->nullable()->index();
+            $table->string('ordem_frete')->nullable()->index();
             $table->string('origem')->nullable();
             $table->string('destino')->nullable();
             $table->decimal('peso', 12, 2)->nullable();

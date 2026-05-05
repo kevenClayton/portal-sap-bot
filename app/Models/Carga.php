@@ -10,6 +10,7 @@ class Carga extends Model
         'bot_id',
         'rfq_uuid',
         'rfq_id',
+        'ordem_frete',
         'origem',
         'destino',
         'peso',

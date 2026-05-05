@@ -84,6 +84,7 @@ class WorkerController extends Controller
             'bot_id' => 'nullable|exists:bots,id',
             'rfq_uuid' => 'nullable|string',
             'rfq_id' => 'nullable|string',
+            'ordem_frete' => 'nullable|string',
             'origem' => 'nullable|string',
             'destino' => 'nullable|string',
             'peso' => 'nullable|numeric',
