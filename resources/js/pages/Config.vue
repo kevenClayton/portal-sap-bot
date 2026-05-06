@@ -3,7 +3,7 @@
     <PageHeader
       title="Configuração"
       eyebrow="Bot & regras"
-      description="Intervalos, notificações, acesso ao portal, cidades permitidas, regras por cidade e filtros globais aplicados automaticamente."
+      description="Use as secções ao lado (ou as abas no telemóvel): cada grupo tem o seu botão de guardar. Agendamento, alertas, portal, cidades para aceite de cargas, regras e filtros globais."
     />
 
     <div v-if="!bot" class="ui-card p-10 text-center">
@@ -22,7 +22,71 @@
     </div>
 
     <template v-else>
-      <div class="ui-card ui-card-interactive p-6 sm:p-7">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+        <!-- Mobile: abas em linha -->
+        <div class="lg:hidden">
+          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Secção</p>
+          <nav
+            class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]"
+            aria-label="Secções da configuração"
+          >
+            <button
+              v-for="aba in abasConfig"
+              :key="aba.id"
+              type="button"
+              class="shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors"
+              :class="
+                abaAtiva === aba.id
+                  ? 'border-sky-500/40 bg-sky-500/10 text-sky-900 dark:border-sky-400/30 dark:bg-sky-500/15 dark:text-sky-100'
+                  : 'border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:bg-zinc-800'
+              "
+              :aria-current="abaAtiva === aba.id ? 'true' : undefined"
+              @click="abaAtiva = aba.id"
+            >
+              {{ aba.rotuloCurto }}
+            </button>
+          </nav>
+        </div>
+
+        <!-- Desktop: navegação lateral -->
+        <nav
+          class="hidden shrink-0 lg:block lg:w-56 xl:w-60"
+          aria-label="Secções da configuração"
+        >
+          <div class="ui-card sticky top-4 space-y-0.5 p-2">
+            <p class="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Secções
+            </p>
+            <button
+              v-for="aba in abasConfig"
+              :key="'side-' + aba.id"
+              type="button"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors"
+              :class="
+                abaAtiva === aba.id
+                  ? 'bg-sky-500/12 text-sky-950 shadow-sm dark:bg-sky-500/20 dark:text-sky-50'
+                  : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/80'
+              "
+              :aria-current="abaAtiva === aba.id ? 'page' : undefined"
+              @click="abaAtiva = aba.id"
+            >
+              <span
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tabular-nums"
+                :class="
+                  abaAtiva === aba.id
+                    ? 'bg-sky-600 text-white dark:bg-sky-500'
+                    : 'bg-zinc-200/80 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300'
+                "
+              >
+                {{ aba.indice }}
+              </span>
+              <span class="min-w-0 leading-snug">{{ aba.rotulo }}</span>
+            </button>
+          </div>
+        </nav>
+
+        <div class="min-w-0 flex-1 space-y-6">
+      <div v-show="abaAtiva === 'agendamento'" class="ui-card ui-card-interactive p-6 sm:p-7">
         <h3 class="ui-section-title">
           <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/15 text-sky-700 dark:text-sky-300">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -53,7 +117,7 @@
         <button type="button" class="ui-btn-muted mt-6" @click="salvarBot">Salvar agendamento</button>
       </div>
 
-      <div class="ui-card ui-card-interactive p-6 sm:p-7">
+      <div v-show="abaAtiva === 'notificacoes'" class="ui-card ui-card-interactive p-6 sm:p-7">
         <h3 class="ui-section-title">
           <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15 text-violet-700 dark:text-violet-300">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -111,7 +175,7 @@
         </button>
       </div>
 
-      <div class="ui-card ui-card-interactive p-6 sm:p-7">
+      <div v-show="abaAtiva === 'portal'" class="ui-card ui-card-interactive p-6 sm:p-7">
         <h3 class="ui-section-title">
           <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-300">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -160,7 +224,7 @@
         </button>
       </div>
 
-      <div class="ui-card ui-card-interactive p-6 sm:p-7">
+      <div v-show="abaAtiva === 'cidades'" class="ui-card ui-card-interactive p-6 sm:p-7">
         <h3 class="ui-section-title">
           <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -172,102 +236,241 @@
               />
             </svg>
           </span>
-          Cidades permitidas
+          Cidades permitidas para aceite
         </h3>
-        <p class="ui-section-desc mb-8 max-w-2xl">
-          Listas de origem e destino aceitos. Lista vazia desse lado não filtra por cidade nesse lado.
+        <p class="ui-section-desc mb-3 max-w-2xl">
+          Estas listas dizem <span class="font-semibold text-zinc-800 dark:text-zinc-100">para que cidades o bot pode aceitar cargas</span>: só entram no fluxo de aceite as cargas cuja origem e destino respeitam o que configurar aqui (quando a lista desse lado tiver linhas).
         </p>
+        <div
+          class="mb-6 rounded-xl border border-sky-200/80 bg-sky-50/70 px-4 py-3 text-sm leading-relaxed text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/25 dark:text-sky-100"
+        >
+          <span class="font-semibold">Como interpretar:</span>
+          origem = cidade de recolha da carga; destino = cidade de entrega.
+          Se deixar uma lista vazia, o bot <span class="font-medium">não filtra</span> cargas por esse lado (aceita qualquer cidade nesse eixo).
+          Vista em planilha: cada linha é uma cidade permitida.
+        </div>
         <div class="grid gap-8 lg:grid-cols-2">
-          <div class="rounded-2xl border border-emerald-200/60 bg-gradient-to-b from-emerald-50/50 to-white p-5 dark:border-emerald-900/40 dark:from-emerald-950/20 dark:to-zinc-900/30">
-            <label class="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Origens aceitas</label>
-            <div class="mt-2 flex min-h-[2.5rem] flex-wrap gap-2">
+          <!-- Planilha: origens -->
+          <div class="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50">
+            <div
+              class="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/70 bg-emerald-50/90 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/35"
+            >
+              <div class="min-w-0">
+                <span class="block text-sm font-semibold text-emerald-950 dark:text-emerald-100">Origens permitidas</span>
+                <span class="mt-0.5 block text-[11px] font-normal leading-snug text-emerald-800/90 dark:text-emerald-200/90">
+                  Cidades de origem em que o aceite de cargas é permitido
+                </span>
+              </div>
               <span
-                v-for="(c, i) in formParam.cidades_origem_list"
-                :key="'o-' + i + c"
-                class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100"
+                class="rounded-md border border-emerald-200/80 bg-white/90 px-2.5 py-1 text-xs font-semibold tabular-nums text-emerald-900 dark:border-emerald-800 dark:bg-zinc-900/80 dark:text-emerald-200"
               >
-                {{ c }}
-                <button type="button" class="ui-chip-remove text-emerald-800 dark:text-emerald-200" aria-label="Remover" @click="removerCidadeOrigem(i)">
-                  ×
-                </button>
+                {{ formParam.cidades_origem_list.length }} linha(s)
               </span>
-              <span v-if="!formParam.cidades_origem_list.length" class="self-center text-sm text-zinc-400">Nenhuma — não restringe origem</span>
             </div>
-            <div class="mt-3 flex gap-2">
-              <input
-                v-model="inputOrigem"
-                type="text"
-                class="ui-input min-w-0 flex-1"
-                placeholder="Ex.: Guarulhos — Enter"
-                @keydown.enter.prevent="adicionarCidadeOrigem"
-              />
-              <button type="button" class="ui-btn-primary shrink-0 px-4" @click="adicionarCidadeOrigem">Adicionar</button>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[320px] text-left text-sm">
+                <thead>
+                  <tr class="border-b border-zinc-200 bg-zinc-50/95 dark:border-zinc-700 dark:bg-zinc-800/90">
+                    <th class="w-14 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      N.º
+                    </th>
+                    <th class="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Cidade (origem da carga)
+                    </th>
+                    <th class="w-24 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Ação
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800/90">
+                  <tr
+                    v-for="(cidadeOrigem, indiceOrigem) in formParam.cidades_origem_list"
+                    :key="'o-' + indiceOrigem + cidadeOrigem"
+                    class="bg-white transition-colors hover:bg-emerald-50/35 dark:bg-transparent dark:hover:bg-emerald-950/15"
+                  >
+                    <td class="px-3 py-2.5 tabular-nums text-zinc-500 dark:text-zinc-400">
+                      {{ indiceOrigem + 1 }}
+                    </td>
+                    <td class="px-3 py-2.5 font-medium text-zinc-800 dark:text-zinc-100">
+                      {{ cidadeOrigem }}
+                    </td>
+                    <td class="px-3 py-2.5 text-right">
+                      <button
+                        type="button"
+                        class="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline dark:text-red-400 dark:hover:text-red-300"
+                        @click="removerCidadeOrigem(indiceOrigem)"
+                      >
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="!formParam.cidades_origem_list.length">
+                    <td colspan="3" class="px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                      Nenhuma linha — o aceite <span class="font-medium text-zinc-700 dark:text-zinc-300">não exige</span> cidade de origem específica.
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="border-t border-zinc-200 bg-zinc-50/70 dark:border-zinc-700 dark:bg-zinc-800/40">
+                  <tr>
+                    <td colspan="3" class="p-3">
+                      <p class="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Nova linha
+                      </p>
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                        <input
+                          v-model="inputOrigem"
+                          type="text"
+                          class="ui-input min-w-0 flex-1 font-mono text-sm"
+                          placeholder="Nome da cidade — Enter para adicionar"
+                          @keydown.enter.prevent="adicionarCidadeOrigem"
+                        />
+                        <button type="button" class="ui-btn-primary shrink-0 px-4 sm:w-auto" @click="adicionarCidadeOrigem">
+                          Adicionar linha
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-            <details class="mt-4 rounded-xl border border-emerald-200/50 bg-white/60 p-3 dark:border-emerald-900/30 dark:bg-zinc-900/40">
-              <summary class="cursor-pointer select-none text-sm font-medium text-emerald-900 dark:text-emerald-200">
-                Adicionar várias cidades de uma vez
+            <details
+              class="group border-t border-zinc-200 bg-zinc-50/40 open:bg-white dark:border-zinc-700 dark:bg-zinc-900/30 dark:open:bg-zinc-900/60"
+            >
+              <summary
+                class="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-emerald-900 marker:text-emerald-700 dark:text-emerald-200 dark:marker:text-emerald-400"
+              >
+                Colar várias cidades (importação em massa)
               </summary>
-              <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                Cole a lista: uma cidade por linha, ou separadas por vírgula ou ponto e vírgula. Duplicatas na lista atual são ignoradas.
-              </p>
-              <textarea
-                v-model="bulkOrigem"
-                rows="5"
-                class="ui-input mt-2 w-full resize-y font-mono text-sm"
-                placeholder="São Paulo&#10;Guarulhos&#10;Campinas"
-              />
-              <button type="button" class="ui-btn-secondary mt-2 w-full sm:w-auto" @click="adicionarCidadesOrigemEmMassa">
-                Adicionar todas às origens
-              </button>
+              <div class="space-y-2 border-t border-zinc-200/80 px-4 pb-4 pt-3 dark:border-zinc-700/80">
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                  Uma cidade por linha, ou separadas por vírgula ou ponto e vírgula. Duplicatas são ignoradas.
+                </p>
+                <textarea
+                  v-model="bulkOrigem"
+                  rows="5"
+                  class="ui-input w-full resize-y font-mono text-sm"
+                  placeholder="São Paulo&#10;Guarulhos&#10;Campinas"
+                />
+                <button type="button" class="ui-btn-secondary w-full sm:w-auto" @click="adicionarCidadesOrigemEmMassa">
+                  Inserir todas como linhas de origem
+                </button>
+              </div>
             </details>
           </div>
-          <div class="rounded-2xl border border-sky-200/60 bg-gradient-to-b from-sky-50/50 to-white p-5 dark:border-sky-900/40 dark:from-sky-950/20 dark:to-zinc-900/30">
-            <label class="text-sm font-semibold text-sky-900 dark:text-sky-200">Destinos aceitos</label>
-            <div class="mt-2 flex min-h-[2.5rem] flex-wrap gap-2">
+
+          <!-- Planilha: destinos -->
+          <div class="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50">
+            <div
+              class="flex flex-wrap items-center justify-between gap-2 border-b border-sky-200/70 bg-sky-50/90 px-4 py-3 dark:border-sky-900/50 dark:bg-sky-950/35"
+            >
+              <div class="min-w-0">
+                <span class="block text-sm font-semibold text-sky-950 dark:text-sky-100">Destinos permitidos</span>
+                <span class="mt-0.5 block text-[11px] font-normal leading-snug text-sky-900/90 dark:text-sky-200/90">
+                  Cidades de destino em que o aceite de cargas é permitido
+                </span>
+              </div>
               <span
-                v-for="(c, i) in formParam.cidades_destino_list"
-                :key="'d-' + i + c"
-                class="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100"
+                class="rounded-md border border-sky-200/80 bg-white/90 px-2.5 py-1 text-xs font-semibold tabular-nums text-sky-950 dark:border-sky-800 dark:bg-zinc-900/80 dark:text-sky-100"
               >
-                {{ c }}
-                <button type="button" class="ui-chip-remove text-sky-900 dark:text-sky-200" aria-label="Remover" @click="removerCidadeDestino(i)">
-                  ×
-                </button>
+                {{ formParam.cidades_destino_list.length }} linha(s)
               </span>
-              <span v-if="!formParam.cidades_destino_list.length" class="self-center text-sm text-zinc-400">Nenhuma — não restringe destino</span>
             </div>
-            <div class="mt-3 flex gap-2">
-              <input
-                v-model="inputDestino"
-                type="text"
-                class="ui-input min-w-0 flex-1"
-                placeholder="Ex.: Bauru — Enter"
-                @keydown.enter.prevent="adicionarCidadeDestino"
-              />
-              <button type="button" class="shrink-0 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-sky-500" @click="adicionarCidadeDestino">
-                Adicionar
-              </button>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[320px] text-left text-sm">
+                <thead>
+                  <tr class="border-b border-zinc-200 bg-zinc-50/95 dark:border-zinc-700 dark:bg-zinc-800/90">
+                    <th class="w-14 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      N.º
+                    </th>
+                    <th class="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Cidade (destino da carga)
+                    </th>
+                    <th class="w-24 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Ação
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800/90">
+                  <tr
+                    v-for="(cidadeDestino, indiceDestino) in formParam.cidades_destino_list"
+                    :key="'d-' + indiceDestino + cidadeDestino"
+                    class="bg-white transition-colors hover:bg-sky-50/40 dark:bg-transparent dark:hover:bg-sky-950/20"
+                  >
+                    <td class="px-3 py-2.5 tabular-nums text-zinc-500 dark:text-zinc-400">
+                      {{ indiceDestino + 1 }}
+                    </td>
+                    <td class="px-3 py-2.5 font-medium text-zinc-800 dark:text-zinc-100">
+                      {{ cidadeDestino }}
+                    </td>
+                    <td class="px-3 py-2.5 text-right">
+                      <button
+                        type="button"
+                        class="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline dark:text-red-400 dark:hover:text-red-300"
+                        @click="removerCidadeDestino(indiceDestino)"
+                      >
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="!formParam.cidades_destino_list.length">
+                    <td colspan="3" class="px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                      Nenhuma linha — o aceite <span class="font-medium text-zinc-700 dark:text-zinc-300">não exige</span> cidade de destino específica.
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="border-t border-zinc-200 bg-zinc-50/70 dark:border-zinc-700 dark:bg-zinc-800/40">
+                  <tr>
+                    <td colspan="3" class="p-3">
+                      <p class="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Nova linha
+                      </p>
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                        <input
+                          v-model="inputDestino"
+                          type="text"
+                          class="ui-input min-w-0 flex-1 font-mono text-sm"
+                          placeholder="Nome da cidade — Enter para adicionar"
+                          @keydown.enter.prevent="adicionarCidadeDestino"
+                        />
+                        <button
+                          type="button"
+                          class="shrink-0 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-sky-500 sm:w-auto"
+                          @click="adicionarCidadeDestino"
+                        >
+                          Adicionar linha
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-            <details class="mt-4 rounded-xl border border-sky-200/50 bg-white/60 p-3 dark:border-sky-900/30 dark:bg-zinc-900/40">
-              <summary class="cursor-pointer select-none text-sm font-medium text-sky-900 dark:text-sky-200">
-                Adicionar várias cidades de uma vez
-              </summary>
-              <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                Cole a lista: uma cidade por linha, ou separadas por vírgula ou ponto e vírgula. Duplicatas na lista atual são ignoradas.
-              </p>
-              <textarea
-                v-model="bulkDestino"
-                rows="5"
-                class="ui-input mt-2 w-full resize-y font-mono text-sm"
-                placeholder="Bauru&#10;Ribeirão Preto&#10;Sorocaba"
-              />
-              <button
-                type="button"
-                class="mt-2 w-full rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-semibold text-sky-900 shadow-sm transition-all hover:bg-sky-50 dark:border-sky-700 dark:bg-zinc-800 dark:text-sky-100 dark:hover:bg-sky-950/50 sm:w-auto"
-                @click="adicionarCidadesDestinoEmMassa"
+            <details
+              class="group border-t border-zinc-200 bg-zinc-50/40 open:bg-white dark:border-zinc-700 dark:bg-zinc-900/30 dark:open:bg-zinc-900/60"
+            >
+              <summary
+                class="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-sky-950 marker:text-sky-700 dark:text-sky-100 dark:marker:text-sky-400"
               >
-                Adicionar todas aos destinos
-              </button>
+                Colar várias cidades (importação em massa)
+              </summary>
+              <div class="space-y-2 border-t border-zinc-200/80 px-4 pb-4 pt-3 dark:border-zinc-700/80">
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                  Uma cidade por linha, ou separadas por vírgula ou ponto e vírgula. Duplicatas são ignoradas.
+                </p>
+                <textarea
+                  v-model="bulkDestino"
+                  rows="5"
+                  class="ui-input w-full resize-y font-mono text-sm"
+                  placeholder="Bauru&#10;Ribeirão Preto&#10;Sorocaba"
+                />
+                <button
+                  type="button"
+                  class="w-full rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-semibold text-sky-900 shadow-sm transition-all hover:bg-sky-50 dark:border-sky-700 dark:bg-zinc-800 dark:text-sky-100 dark:hover:bg-sky-950/50 sm:w-auto"
+                  @click="adicionarCidadesDestinoEmMassa"
+                >
+                  Inserir todas como linhas de destino
+                </button>
+              </div>
             </details>
           </div>
         </div>
@@ -279,7 +482,7 @@
         </button>
       </div>
 
-      <div class="ui-card ui-card-interactive p-6 sm:p-7">
+      <div v-show="abaAtiva === 'regras'" class="ui-card ui-card-interactive p-6 sm:p-7">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div class="min-w-0">
             <h3 class="ui-section-title">
@@ -295,7 +498,7 @@
               Regras por cidade
             </h3>
             <p class="ui-section-desc mt-2 max-w-2xl">
-              Selecione cidades das listas acima; os mesmos limites valem para todas. Várias regras podem aplicar-se à mesma carga — todas devem passar.
+              Vista em planilha por regra: limite de peso e valor aplicam-se às cidades marcadas na coluna «Na regra». As cidades vêm da secção «Cidades permitidas para aceite». Várias regras podem aplicar-se à mesma carga — todas devem passar.
             </p>
           </div>
           <button type="button" class="ui-btn-secondary shrink-0" @click="adicionarRegra">
@@ -306,239 +509,302 @@
           </button>
         </div>
 
-        <div class="mt-6 space-y-4">
+        <div class="mt-6 space-y-6">
           <div
             v-for="(r, idx) in formParam.regras"
             :key="r._key"
-            class="rounded-2xl border border-zinc-200/90 bg-zinc-50/60 p-5 shadow-inner dark:border-zinc-700/80 dark:bg-zinc-950/40"
+            class="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50"
           >
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200/80 pb-3 dark:border-zinc-700/80">
-              <span class="rounded-full bg-zinc-200/80 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                Regra {{ idx + 1 }}
-              </span>
-              <button type="button" class="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400" @click="removerRegra(idx)">
-                Remover
+            <div
+              class="flex flex-wrap items-center justify-between gap-2 border-b border-teal-200/70 bg-teal-50/90 px-4 py-3 dark:border-teal-900/40 dark:bg-teal-950/30"
+            >
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-semibold text-teal-950 dark:text-teal-100">Regra {{ idx + 1 }}</span>
+                <span
+                  class="rounded-md border border-teal-200/80 bg-white/90 px-2 py-0.5 text-xs font-semibold tabular-nums text-teal-900 dark:border-teal-800 dark:bg-zinc-900/80 dark:text-teal-200"
+                >
+                  {{ cidadesSelecionadasPermitidasNaRegra(r).length }} cidade(s) na regra
+                </span>
+              </div>
+              <button
+                type="button"
+                class="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline dark:text-red-400"
+                @click="removerRegra(idx)"
+              >
+                Remover regra
               </button>
             </div>
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <label class="ui-label">Aplica à</label>
-                <select
-                  v-model="r.aplica_a"
-                  class="ui-select"
-                  @change="aoMudarAplicaARegra(r)"
-                >
-                  <option value="origem">Cidade de origem</option>
-                  <option value="destino">Cidade de destino</option>
-                </select>
-              </div>
-              <div class="sm:col-span-2 lg:col-span-3">
-                <div class="flex flex-wrap items-end justify-between gap-2">
-                  <label class="ui-label">Cidades nesta regra</label>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      class="text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-                      @click="selecionarTodasCidadesRegra(r)"
-                    >
-                      Marcar todas
-                    </button>
-                    <button
-                      v-if="normalizarBuscaCidade(r.busca_cidades) && cidadesRegraFiltradas(r).length"
-                      type="button"
-                      class="text-xs font-medium text-teal-700 hover:underline dark:text-teal-400"
-                      @click="marcarCidadesFiltradasRegra(r)"
-                    >
-                      Marcar resultado da busca
-                    </button>
-                    <button
-                      type="button"
-                      class="text-xs font-medium text-zinc-600 hover:underline dark:text-zinc-400"
-                      @click="limparCidadesRegra(r)"
-                    >
-                      Limpar seleção
-                    </button>
-                  </div>
-                </div>
-                <div
-                  v-if="cidadesDisponiveisParaRegra(r.aplica_a).length"
-                  class="mt-2 space-y-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50"
-                >
-                  <div class="relative">
-                    <svg
-                      class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+
+            <!-- Parâmetros numéricos: uma linha tipo planilha -->
+            <div class="overflow-x-auto border-b border-zinc-200 dark:border-zinc-700">
+              <table class="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr class="border-b border-zinc-200 bg-zinc-50/95 dark:border-zinc-700 dark:bg-zinc-800/90">
+                    <th class="min-w-[10rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Aplica à
+                    </th>
+                    <th class="min-w-[6.5rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Peso mín. (t)
+                    </th>
+                    <th class="min-w-[6.5rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Peso máx. (t)
+                    </th>
+                    <th class="min-w-[7.5rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Valor carga mín.
+                    </th>
+                    <th class="min-w-[7.5rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Valor carga máx.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="bg-white dark:bg-transparent">
+                    <td class="px-3 py-2.5 align-middle">
+                      <select v-model="r.aplica_a" class="ui-select w-full" @change="aoMudarAplicaARegra(r)">
+                        <option value="origem">Cidade de origem</option>
+                        <option value="destino">Cidade de destino</option>
+                      </select>
+                    </td>
+                    <td class="px-3 py-2.5 align-middle">
+                      <input
+                        v-model.number="r.peso_min_ton"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="ui-input w-full tabular-nums"
+                        placeholder="—"
                       />
-                    </svg>
-                    <input
-                      v-model="r.busca_cidades"
-                      type="search"
-                      class="ui-input w-full pl-9"
-                      placeholder="Buscar cidade pelo nome…"
-                      autocomplete="off"
-                      :aria-label="'Filtrar cidades da regra ' + (idx + 1)"
-                    />
-                  </div>
-                  <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                    <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ cidadesSelecionadasPermitidasNaRegra(r).length }}</span>
-                    selecionada(s)
-                    <template v-if="normalizarBuscaCidade(r.busca_cidades)">
-                      · lista filtrada:
-                      <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ cidadesRegraFiltradas(r).length }}</span>
-                      de {{ cidadesDisponiveisParaRegra(r.aplica_a).length }}
-                    </template>
-                  </p>
-                  <div
-                    v-if="cidadesSelecionadasPermitidasNaRegra(r).length"
-                    class="max-h-[5.5rem] overflow-y-auto rounded-lg border border-teal-200/70 bg-teal-50/40 p-2 dark:border-teal-900/50 dark:bg-teal-950/25"
+                    </td>
+                    <td class="px-3 py-2.5 align-middle">
+                      <input
+                        v-model.number="r.peso_max_ton"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="ui-input w-full tabular-nums"
+                        placeholder="—"
+                      />
+                    </td>
+                    <td class="px-3 py-2.5 align-middle">
+                      <input
+                        v-model.number="r.valor_carga_min"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="ui-input w-full tabular-nums"
+                        placeholder="Ex.: 400000"
+                      />
+                    </td>
+                    <td class="px-3 py-2.5 align-middle">
+                      <input
+                        v-model.number="r.valor_carga_max"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="ui-input w-full tabular-nums"
+                        placeholder="—"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Cidades: planilha com filtro -->
+            <template v-if="cidadesDisponiveisParaRegra(r.aplica_a).length">
+              <div
+                class="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50/50 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-800/30 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+              >
+                <div class="relative min-w-0 flex-1 sm:max-w-md">
+                  <svg
+                    class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
                   >
-                    <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-teal-800 dark:text-teal-300">
-                      Selecionadas
-                    </p>
-                    <div class="flex flex-wrap gap-1.5">
-                      <span
-                        v-for="c in cidadesSelecionadasPermitidasNaRegra(r)"
-                        :key="'sel-' + r._key + '-' + c"
-                        class="inline-flex max-w-full items-center gap-1 rounded-full border border-teal-200 bg-white px-2.5 py-0.5 text-xs font-medium text-teal-900 shadow-sm dark:border-teal-800 dark:bg-zinc-900 dark:text-teal-100"
-                      >
-                        <span class="truncate" :title="c">{{ c }}</span>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                    />
+                  </svg>
+                  <input
+                    v-model="r.busca_cidades"
+                    type="search"
+                    class="ui-input w-full pl-9"
+                    placeholder="Filtrar linhas pelo nome da cidade…"
+                    autocomplete="off"
+                    :aria-label="'Filtrar cidades da regra ' + (idx + 1)"
+                  />
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                    @click="selecionarTodasCidadesRegra(r)"
+                  >
+                    Marcar todas
+                  </button>
+                  <button
+                    v-if="normalizarBuscaCidade(r.busca_cidades) && cidadesRegraFiltradas(r).length"
+                    type="button"
+                    class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-teal-800 shadow-sm hover:bg-teal-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-teal-300 dark:hover:bg-teal-950/30"
+                    @click="marcarCidadesFiltradasRegra(r)"
+                  >
+                    Marcar só filtradas
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    @click="limparCidadesRegra(r)"
+                  >
+                    Limpar marcações
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="cidadesRegraFiltradas(r).length" class="max-h-72 overflow-auto">
+                <table class="w-full min-w-[360px] text-left text-sm">
+                  <thead class="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
+                    <tr>
+                      <th class="w-12 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        N.º
+                      </th>
+                      <th class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Cidade
+                      </th>
+                      <th class="w-28 px-3 py-2 text-center text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Na regra
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800/90">
+                    <tr
+                      v-for="(nomeCidade, indiceFiltrado) in cidadesRegraFiltradas(r)"
+                      :key="r._key + '-c-' + nomeCidade"
+                      class="transition-colors"
+                      :class="
+                        regraTemCidade(r, nomeCidade)
+                          ? 'bg-teal-50/70 dark:bg-teal-950/25'
+                          : 'bg-white hover:bg-zinc-50 dark:bg-transparent dark:hover:bg-zinc-800/40'
+                      "
+                    >
+                      <td class="px-3 py-2 tabular-nums text-zinc-500 dark:text-zinc-400">
+                        {{ indiceFiltrado + 1 }}
+                      </td>
+                      <td class="px-3 py-2 font-medium text-zinc-800 dark:text-zinc-100">
+                        {{ nomeCidade }}
+                      </td>
+                      <td class="px-3 py-2 text-center align-middle">
+                        <input
+                          type="checkbox"
+                          class="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/30"
+                          :checked="regraTemCidade(r, nomeCidade)"
+                          @change="toggleCidadeRegra(r, nomeCidade, $event.target.checked)"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p v-else class="border-b border-zinc-100 px-4 py-10 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                Nenhuma linha corresponde ao filtro. Limpe a caixa de busca ou ajuste o texto.
+              </p>
+              <div
+                class="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-zinc-200 bg-zinc-50/60 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400"
+              >
+                <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ cidadesSelecionadasPermitidasNaRegra(r).length }}</span>
+                <span>com «Na regra» ativado</span>
+                <template v-if="normalizarBuscaCidade(r.busca_cidades)">
+                  <span class="text-zinc-400">·</span>
+                  <span>a mostrar</span>
+                  <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ cidadesRegraFiltradas(r).length }}</span>
+                  <span>de {{ cidadesDisponiveisParaRegra(r.aplica_a).length }} linhas</span>
+                </template>
+              </div>
+            </template>
+            <p
+              v-else
+              class="border-b border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
+            >
+              Nenhuma cidade na lista de aceite. Na secção «Cidades permitidas para aceite», adicione linhas em origens (regra por origem) ou destinos (regra por destino).
+            </p>
+
+            <div v-if="cidadesOrfasNaRegra(r).length" class="border-t border-amber-200/60 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <p class="px-4 pt-3 text-xs font-medium text-amber-950 dark:text-amber-100">
+                Cidades guardadas na regra que já não existem na planilha de cidades permitidas para aceite:
+              </p>
+              <div class="overflow-x-auto px-2 pb-3">
+                <table class="mt-2 w-full min-w-[280px] text-left text-sm">
+                  <thead>
+                    <tr class="border-b border-amber-200/70 bg-amber-100/50 dark:border-amber-900/50 dark:bg-amber-950/40">
+                      <th class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                        Cidade
+                      </th>
+                      <th class="w-24 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                        Ação
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-amber-100 dark:divide-amber-900/30">
+                    <tr
+                      v-for="nomeCidadeOrfa in cidadesOrfasNaRegra(r)"
+                      :key="'orf-' + r._key + '-' + nomeCidadeOrfa"
+                      class="bg-white/80 dark:bg-zinc-900/30"
+                    >
+                      <td class="px-3 py-2 font-medium text-amber-950 dark:text-amber-50">
+                        {{ nomeCidadeOrfa }}
+                      </td>
+                      <td class="px-3 py-2 text-right">
                         <button
                           type="button"
-                          class="shrink-0 rounded-full p-0.5 text-teal-600 hover:bg-teal-100 hover:text-red-600 dark:text-teal-400 dark:hover:bg-teal-900/50 dark:hover:text-red-400"
-                          aria-label="Remover cidade"
-                          @click="toggleCidadeRegra(r, c, false)"
+                          class="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                          @click="toggleCidadeRegra(r, nomeCidadeOrfa, false)"
                         >
-                          ×
+                          Remover da regra
                         </button>
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="max-h-52 overflow-y-auto rounded-lg border border-zinc-100 dark:border-zinc-700/80 sm:max-h-64"
-                  >
-                    <ul
-                      v-if="cidadesRegraFiltradas(r).length"
-                      class="divide-y divide-zinc-100 dark:divide-zinc-800"
-                    >
-                      <li v-for="c in cidadesRegraFiltradas(r)" :key="r._key + '-c-' + c">
-                        <label
-                          class="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/70"
-                        >
-                          <input
-                            type="checkbox"
-                            class="h-4 w-4 shrink-0 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/30"
-                            :checked="regraTemCidade(r, c)"
-                            @change="toggleCidadeRegra(r, c, $event.target.checked)"
-                          />
-                          <span class="min-w-0 flex-1 text-sm text-zinc-800 dark:text-zinc-200">{{ c }}</span>
-                        </label>
-                      </li>
-                    </ul>
-                    <p
-                      v-else
-                      class="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400"
-                    >
-                      Nenhuma cidade corresponde à busca. Limpe o filtro ou ajuste o texto.
-                    </p>
-                  </div>
-                </div>
-                <p
-                  v-else
-                  class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
-                >
-                  Nenhuma cidade nesta lista. Adicione cidades em «Origens aceitas» (regra por origem) ou «Destinos aceitos» (regra por destino) acima.
-                </p>
-                <div
-                  v-if="cidadesOrfasNaRegra(r).length"
-                  class="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 bg-zinc-100/90 px-3 py-2 text-xs dark:border-zinc-600 dark:bg-zinc-800/60"
-                >
-                  <span class="text-zinc-600 dark:text-zinc-400">Na regra, mas não aparecem na lista acima (remova ou cadastre de novo na lista):</span>
-                  <span
-                    v-for="c in cidadesOrfasNaRegra(r)"
-                    :key="'orf-' + r._key + '-' + c"
-                    class="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-zinc-800 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200"
-                  >
-                    {{ c }}
-                    <button
-                      type="button"
-                      class="text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
-                      aria-label="Remover cidade da regra"
-                      @click="toggleCidadeRegra(r, c, false)"
-                    >
-                      ×
-                    </button>
-                  </span>
-                </div>
-                <p
-                  v-if="cidadesDisponiveisParaRegra(r.aplica_a).length && !r.cidades_selecionadas?.length"
-                  class="mt-1 text-xs text-zinc-500 dark:text-zinc-400"
-                >
-                  Marque ao menos uma cidade para esta regra ser salva.
-                </p>
-              </div>
-              <div>
-                <label class="ui-label">Peso mín. (t)</label>
-                <input
-                  v-model.number="r.peso_min_ton"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  class="ui-input"
-                  placeholder="—"
-                />
-              </div>
-              <div>
-                <label class="ui-label">Peso máx. (t)</label>
-                <input
-                  v-model.number="r.peso_max_ton"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  class="ui-input"
-                  placeholder="—"
-                />
-              </div>
-              <div>
-                <label class="ui-label">Valor carga mín.</label>
-                <input
-                  v-model.number="r.valor_carga_min"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  class="ui-input"
-                  placeholder="Ex.: 400000"
-                />
-              </div>
-              <div>
-                <label class="ui-label">Valor carga máx.</label>
-                <input
-                  v-model.number="r.valor_carga_max"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  class="ui-input"
-                  placeholder="—"
-                />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
+
+            <p
+              v-if="cidadesDisponiveisParaRegra(r.aplica_a).length && !r.cidades_selecionadas?.length"
+              class="border-t border-zinc-200 px-4 py-2 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
+            >
+              Marque ao menos uma cidade na coluna «Na regra» para esta regra ser guardada.
+            </p>
           </div>
+
           <div
             v-if="!formParam.regras.length"
-            class="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/50 py-12 text-center dark:border-zinc-600 dark:bg-zinc-900/20"
+            class="overflow-hidden rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 dark:border-zinc-600 dark:bg-zinc-900/25"
           >
-            <p class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Nenhuma regra extra ainda.</p>
-            <p class="mt-1 px-4 text-xs text-zinc-500 dark:text-zinc-500">
-              Use «Nova regra» para valor mínimo em Itatiba, peso máximo em Mauá, etc.
-            </p>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[320px] text-left text-sm opacity-60">
+                <thead>
+                  <tr class="border-b border-zinc-200 bg-zinc-100/80 dark:border-zinc-700 dark:bg-zinc-800/50">
+                    <th class="px-4 py-2 text-xs font-semibold uppercase text-zinc-500">N.º</th>
+                    <th class="px-4 py-2 text-xs font-semibold uppercase text-zinc-500">Cidade</th>
+                    <th class="px-4 py-2 text-xs font-semibold uppercase text-zinc-500">Na regra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="3" class="px-4 py-12 text-center">
+                      <p class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Nenhuma regra extra ainda.</p>
+                      <p class="mt-1 text-xs text-zinc-500">
+                        Clique em «Nova regra» e preencha a planilha (pesos, valores e cidades).
+                      </p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
         <button type="button" class="ui-btn-primary mt-6 inline-flex items-center gap-2 px-6" @click="salvarParametro">
@@ -549,7 +815,7 @@
         </button>
       </div>
 
-      <div class="ui-card ui-card-interactive p-6 sm:p-7">
+      <div v-show="abaAtiva === 'filtros'" class="ui-card ui-card-interactive p-6 sm:p-7">
         <h3 class="ui-section-title">
           <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800/10 text-zinc-800 dark:bg-white/10 dark:text-zinc-200">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -620,6 +886,8 @@
           Salvar parâmetros
         </button>
       </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -671,6 +939,17 @@ function defaultFormParam() {
 }
 
 const formParam = ref(defaultFormParam());
+
+const abaAtiva = ref('agendamento');
+
+const abasConfig = [
+  { id: 'agendamento', rotulo: 'Agendamento', rotuloCurto: 'Agenda', indice: '1' },
+  { id: 'notificacoes', rotulo: 'Notificações', rotuloCurto: 'Alertas', indice: '2' },
+  { id: 'portal', rotulo: 'Portal', rotuloCurto: 'Portal', indice: '3' },
+  { id: 'cidades', rotulo: 'Cidades (aceite)', rotuloCurto: 'Cidades', indice: '4' },
+  { id: 'regras', rotulo: 'Regras', rotuloCurto: 'Regras', indice: '5' },
+  { id: 'filtros', rotulo: 'Filtros globais', rotuloCurto: 'Filtros', indice: '6' },
+];
 
 function cidadesDisponiveisParaRegra(aplicaA) {
   const fp = formParam.value;
