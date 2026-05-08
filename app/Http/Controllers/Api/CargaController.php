@@ -80,7 +80,8 @@ class CargaController extends Controller
                     $q->where('origem', 'like', $like)
                         ->orWhere('destino', 'like', $like)
                         ->orWhere('rfq_id', 'like', $like)
-                        ->orWhere('rfq_uuid', 'like', $like);
+                        ->orWhere('rfq_uuid', 'like', $like)
+                        ->orWhere('ordem_frete', 'like', $like);
                 });
             }
         }

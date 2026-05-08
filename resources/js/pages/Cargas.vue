@@ -51,12 +51,12 @@
           <input v-model="filtrosForm.data_fim" type="date" class="ui-input w-full" />
         </div>
         <div class="min-w-[200px] flex-[2]">
-          <label class="ui-label">Buscar (RFQ, origem, destino)</label>
+          <label class="ui-label">Buscar (RFQ, ordem de frete, origem, destino)</label>
           <input
             v-model="filtrosForm.busca"
             type="search"
             class="ui-input w-full"
-            placeholder="Ex.: Guarulhos ou número do RFQ"
+            placeholder="Ex.: Guarulhos, RFQ ou ordem de frete"
             autocomplete="off"
             @keydown.enter.prevent="carregar"
           />
@@ -82,11 +82,14 @@
 
     <div class="ui-card overflow-hidden shadow-sm">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px] text-left text-sm">
+        <table class="w-full min-w-[880px] text-left text-sm">
           <thead>
             <tr class="border-b border-zinc-200 bg-zinc-50/90 dark:border-zinc-800 dark:bg-zinc-900/80">
               <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 ID / RFQ
+              </th>
+              <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Ordem de frete
               </th>
               <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Origem
@@ -116,6 +119,9 @@
             >
               <td class="px-5 py-3.5 font-mono text-xs text-zinc-800 dark:text-zinc-200">
                 {{ c.rfq_id || c.rfq_uuid || c.id }}
+              </td>
+              <td class="px-5 py-3.5 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                {{ textoOrdemFrete(c) }}
               </td>
               <td class="px-5 py-3.5 text-zinc-700 dark:text-zinc-300">{{ c.origem || '—' }}</td>
               <td class="px-5 py-3.5 text-zinc-700 dark:text-zinc-300">{{ c.destino || '—' }}</td>
@@ -212,6 +218,34 @@ function formatarData(s) {
   if (!s) return '—';
   const d = new Date(s);
   return d.toLocaleString('pt-BR');
+}
+
+/** Coluna de listagem: coluna dedicada + mesmos fallbacks que o e-mail (dados_json legacy). */
+function textoOrdemFrete(carga) {
+  const direto = carga?.ordem_frete;
+  if (direto != null && String(direto).trim() !== '') {
+    return String(direto).trim();
+  }
+  const dados = carga?.dados_json;
+  if (!dados || typeof dados !== 'object') {
+    return '—';
+  }
+  const candidatos = [
+    dados.TransportationOrderID,
+    dados.TransportationOrderId,
+    dados.RootTransportationOrderID,
+    dados.RootTransportationOrderId,
+    dados.TorId,
+    dados.TORId,
+    dados.FreightOrderID,
+    dados.FreightOrderId,
+  ];
+  for (const valor of candidatos) {
+    if (valor != null && String(valor).trim() !== '') {
+      return String(valor).trim();
+    }
+  }
+  return '—';
 }
 
 function buildQueryParams() {
