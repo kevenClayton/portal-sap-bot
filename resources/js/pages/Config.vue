@@ -498,7 +498,7 @@
               Regras por cidade
             </h3>
             <p class="ui-section-desc mt-2 max-w-2xl">
-              Vista em planilha por regra: limite de peso e valor aplicam-se às cidades marcadas na coluna «Na regra». As cidades vêm da secção «Cidades permitidas para aceite». Várias regras podem aplicar-se à mesma carga — todas devem passar.
+              Marque cidades de origem e/ou destino na mesma regra. Se marcar <span class="font-semibold text-zinc-800 dark:text-zinc-100">origem e destino</span>, os limites só se aplicam à combinação (ex.: destino Y + origem X, até 10 t). Só origem ou só destino mantém o filtro por esse lado. Várias regras na mesma carga — todas devem passar.
             </p>
           </div>
           <button type="button" class="ui-btn-secondary shrink-0" @click="adicionarRegra">
@@ -523,7 +523,7 @@
                 <span
                   class="rounded-md border border-teal-200/80 bg-white/90 px-2 py-0.5 text-xs font-semibold tabular-nums text-teal-900 dark:border-teal-800 dark:bg-zinc-900/80 dark:text-teal-200"
                 >
-                  {{ cidadesSelecionadasPermitidasNaRegra(r).length }} cidade(s) na regra
+                  {{ totalCidadesNaRegra(r) }} cidade(s) na regra
                 </span>
               </div>
               <button
@@ -540,9 +540,6 @@
               <table class="w-full min-w-[720px] text-left text-sm">
                 <thead>
                   <tr class="border-b border-zinc-200 bg-zinc-50/95 dark:border-zinc-700 dark:bg-zinc-800/90">
-                    <th class="min-w-[10rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                      Aplica à
-                    </th>
                     <th class="min-w-[6.5rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                       Peso mín. (t)
                     </th>
@@ -559,12 +556,6 @@
                 </thead>
                 <tbody>
                   <tr class="bg-white dark:bg-transparent">
-                    <td class="px-3 py-2.5 align-middle">
-                      <select v-model="r.aplica_a" class="ui-select w-full" @change="aoMudarAplicaARegra(r)">
-                        <option value="origem">Cidade de origem</option>
-                        <option value="destino">Cidade de destino</option>
-                      </select>
-                    </td>
                     <td class="px-3 py-2.5 align-middle">
                       <input
                         v-model.number="r.peso_min_ton"
@@ -610,8 +601,12 @@
               </table>
             </div>
 
-            <!-- Cidades: planilha com filtro -->
-            <template v-if="cidadesDisponiveisParaRegra(r.aplica_a).length">
+            <!-- Cidades: origem e destino na mesma regra -->
+            <template v-for="lado in ladosRegraCidade" :key="r._key + '-' + lado.id">
+              <div v-if="cidadesDisponiveisParaRegra(lado.id).length" class="border-b border-zinc-200 dark:border-zinc-700">
+                <p class="border-b border-zinc-100 bg-zinc-50/80 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300">
+                  {{ lado.rotulo }}
+                </p>
               <div
                 class="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50/50 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-800/30 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
               >
@@ -631,41 +626,41 @@
                     />
                   </svg>
                   <input
-                    v-model="r.busca_cidades"
+                    v-model="r[lado.buscaCampo]"
                     type="search"
                     class="ui-input w-full pl-9"
                     placeholder="Filtrar linhas pelo nome da cidade…"
                     autocomplete="off"
-                    :aria-label="'Filtrar cidades da regra ' + (idx + 1)"
+                    :aria-label="'Filtrar ' + lado.rotulo + ' da regra ' + (idx + 1)"
                   />
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <button
                     type="button"
                     class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-                    @click="selecionarTodasCidadesRegra(r)"
+                    @click="selecionarTodasCidadesRegra(r, lado.id)"
                   >
                     Marcar todas
                   </button>
                   <button
-                    v-if="normalizarBuscaCidade(r.busca_cidades) && cidadesRegraFiltradas(r).length"
+                    v-if="normalizarBuscaCidade(r[lado.buscaCampo]) && cidadesRegraFiltradas(r, lado.id).length"
                     type="button"
                     class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-teal-800 shadow-sm hover:bg-teal-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-teal-300 dark:hover:bg-teal-950/30"
-                    @click="marcarCidadesFiltradasRegra(r)"
+                    @click="marcarCidadesFiltradasRegra(r, lado.id)"
                   >
                     Marcar só filtradas
                   </button>
                   <button
                     type="button"
                     class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    @click="limparCidadesRegra(r)"
+                    @click="limparCidadesRegra(r, lado.id)"
                   >
                     Limpar marcações
                   </button>
                 </div>
               </div>
 
-              <div v-if="cidadesRegraFiltradas(r).length" class="max-h-72 overflow-auto">
+              <div v-if="cidadesRegraFiltradas(r, lado.id).length" class="max-h-56 overflow-auto">
                 <table class="w-full min-w-[360px] text-left text-sm">
                   <thead class="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
                     <tr>
@@ -682,11 +677,11 @@
                   </thead>
                   <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800/90">
                     <tr
-                      v-for="(nomeCidade, indiceFiltrado) in cidadesRegraFiltradas(r)"
-                      :key="r._key + '-c-' + nomeCidade"
+                      v-for="(nomeCidade, indiceFiltrado) in cidadesRegraFiltradas(r, lado.id)"
+                      :key="r._key + '-' + lado.id + '-c-' + nomeCidade"
                       class="transition-colors"
                       :class="
-                        regraTemCidade(r, nomeCidade)
+                        regraTemCidade(r, nomeCidade, lado.id)
                           ? 'bg-teal-50/70 dark:bg-teal-950/25'
                           : 'bg-white hover:bg-zinc-50 dark:bg-transparent dark:hover:bg-zinc-800/40'
                       "
@@ -701,8 +696,8 @@
                         <input
                           type="checkbox"
                           class="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/30"
-                          :checked="regraTemCidade(r, nomeCidade)"
-                          @change="toggleCidadeRegra(r, nomeCidade, $event.target.checked)"
+                          :checked="regraTemCidade(r, nomeCidade, lado.id)"
+                          @change="toggleCidadeRegra(r, nomeCidade, $event.target.checked, lado.id)"
                         />
                       </td>
                     </tr>
@@ -715,68 +710,71 @@
               <div
                 class="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-zinc-200 bg-zinc-50/60 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400"
               >
-                <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ cidadesSelecionadasPermitidasNaRegra(r).length }}</span>
+                <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ cidadesSelecionadasPermitidasNaRegra(r, lado.id).length }}</span>
                 <span>com «Na regra» ativado</span>
-                <template v-if="normalizarBuscaCidade(r.busca_cidades)">
+                <template v-if="normalizarBuscaCidade(r[lado.buscaCampo])">
                   <span class="text-zinc-400">·</span>
                   <span>a mostrar</span>
-                  <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ cidadesRegraFiltradas(r).length }}</span>
-                  <span>de {{ cidadesDisponiveisParaRegra(r.aplica_a).length }} linhas</span>
+                  <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ cidadesRegraFiltradas(r, lado.id).length }}</span>
+                  <span>de {{ cidadesDisponiveisParaRegra(lado.id).length }} linhas</span>
                 </template>
+              </div>
+              <div
+                v-if="cidadesOrfasNaRegra(r, lado.id).length"
+                class="border-t border-amber-200/60 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20"
+              >
+                <p class="px-4 pt-3 text-xs font-medium text-amber-950 dark:text-amber-100">
+                  {{ lado.rotulo }} — cidades guardadas que já não estão na lista de aceite:
+                </p>
+                <div class="overflow-x-auto px-2 pb-3">
+                  <table class="mt-2 w-full min-w-[280px] text-left text-sm">
+                    <thead>
+                      <tr class="border-b border-amber-200/70 bg-amber-100/50 dark:border-amber-900/50 dark:bg-amber-950/40">
+                        <th class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                          Cidade
+                        </th>
+                        <th class="w-24 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                          Ação
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-amber-100 dark:divide-amber-900/30">
+                      <tr
+                        v-for="nomeCidadeOrfa in cidadesOrfasNaRegra(r, lado.id)"
+                        :key="'orf-' + r._key + '-' + lado.id + '-' + nomeCidadeOrfa"
+                        class="bg-white/80 dark:bg-zinc-900/30"
+                      >
+                        <td class="px-3 py-2 font-medium text-amber-950 dark:text-amber-50">
+                          {{ nomeCidadeOrfa }}
+                        </td>
+                        <td class="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            class="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                            @click="toggleCidadeRegra(r, nomeCidadeOrfa, false, lado.id)"
+                          >
+                            Remover da regra
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               </div>
             </template>
             <p
-              v-else
+              v-if="!temListasCidadesParaRegras()"
               class="border-b border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
             >
-              Nenhuma cidade na lista de aceite. Na secção «Cidades permitidas para aceite», adicione linhas em origens (regra por origem) ou destinos (regra por destino).
+              Nenhuma cidade na lista de aceite. Na secção «Cidades permitidas para aceite», adicione origens e/ou destinos.
             </p>
 
-            <div v-if="cidadesOrfasNaRegra(r).length" class="border-t border-amber-200/60 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20">
-              <p class="px-4 pt-3 text-xs font-medium text-amber-950 dark:text-amber-100">
-                Cidades guardadas na regra que já não existem na planilha de cidades permitidas para aceite:
-              </p>
-              <div class="overflow-x-auto px-2 pb-3">
-                <table class="mt-2 w-full min-w-[280px] text-left text-sm">
-                  <thead>
-                    <tr class="border-b border-amber-200/70 bg-amber-100/50 dark:border-amber-900/50 dark:bg-amber-950/40">
-                      <th class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200">
-                        Cidade
-                      </th>
-                      <th class="w-24 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-200">
-                        Ação
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-amber-100 dark:divide-amber-900/30">
-                    <tr
-                      v-for="nomeCidadeOrfa in cidadesOrfasNaRegra(r)"
-                      :key="'orf-' + r._key + '-' + nomeCidadeOrfa"
-                      class="bg-white/80 dark:bg-zinc-900/30"
-                    >
-                      <td class="px-3 py-2 font-medium text-amber-950 dark:text-amber-50">
-                        {{ nomeCidadeOrfa }}
-                      </td>
-                      <td class="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          class="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
-                          @click="toggleCidadeRegra(r, nomeCidadeOrfa, false)"
-                        >
-                          Remover da regra
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
             <p
-              v-if="cidadesDisponiveisParaRegra(r.aplica_a).length && !r.cidades_selecionadas?.length"
+              v-if="temListasCidadesParaRegras() && !regraTemAlgumaCidade(r)"
               class="border-t border-zinc-200 px-4 py-2 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
             >
-              Marque ao menos uma cidade na coluna «Na regra» para esta regra ser guardada.
+              Marque ao menos uma cidade de origem ou destino para esta regra ser guardada.
             </p>
           </div>
 
@@ -905,13 +903,38 @@ const bulkOrigem = ref('');
 const bulkDestino = ref('');
 let regraKey = 0;
 
+const ladosRegraCidade = [
+  {
+    id: 'origem',
+    rotulo: 'Cidades de origem (na regra)',
+    listaCampo: 'cidades_origem_selecionadas',
+    buscaCampo: 'busca_cidades_origem',
+  },
+  {
+    id: 'destino',
+    rotulo: 'Cidades de destino (na regra)',
+    listaCampo: 'cidades_destino_selecionadas',
+    buscaCampo: 'busca_cidades_destino',
+  },
+];
+
+function listaCidadesRegra(r, lado) {
+  const meta = ladosRegraCidade.find((l) => l.id === lado);
+  if (!meta) {
+    return [];
+  }
+  const lista = r[meta.listaCampo];
+  return Array.isArray(lista) ? lista : [];
+}
+
 function novaRegraVazia() {
   regraKey += 1;
   return {
     _key: `r-${regraKey}-${Date.now()}`,
-    aplica_a: 'origem',
-    cidades_selecionadas: [],
-    busca_cidades: '',
+    cidades_origem_selecionadas: [],
+    cidades_destino_selecionadas: [],
+    busca_cidades_origem: '',
+    busca_cidades_destino: '',
     peso_min_ton: null,
     peso_max_ton: null,
     valor_carga_min: null,
@@ -967,70 +990,94 @@ function normalizarBuscaCidade(s) {
     .trim();
 }
 
-function cidadesRegraFiltradas(r) {
-  const todas = cidadesDisponiveisParaRegra(r.aplica_a);
-  const q = normalizarBuscaCidade(r.busca_cidades);
+function temListasCidadesParaRegras() {
+  const fp = formParam.value;
+  return (fp.cidades_origem_list?.length || 0) > 0 || (fp.cidades_destino_list?.length || 0) > 0;
+}
+
+function buscaCidadesRegra(r, lado) {
+  const meta = ladosRegraCidade.find((l) => l.id === lado);
+  return meta ? r[meta.buscaCampo] : '';
+}
+
+function cidadesRegraFiltradas(r, lado) {
+  const todas = cidadesDisponiveisParaRegra(lado);
+  const q = normalizarBuscaCidade(buscaCidadesRegra(r, lado));
   if (!q) {
     return todas;
   }
   return todas.filter((c) => normalizarBuscaCidade(c).includes(q));
 }
 
-function cidadesSelecionadasPermitidasNaRegra(r) {
-  const permitidas = new Set(cidadesDisponiveisParaRegra(r.aplica_a));
-  const sel = Array.isArray(r.cidades_selecionadas) ? r.cidades_selecionadas : [];
-  return sel.filter((c) => permitidas.has(c));
+function cidadesSelecionadasPermitidasNaRegra(r, lado) {
+  const permitidas = new Set(cidadesDisponiveisParaRegra(lado));
+  return listaCidadesRegra(r, lado).filter((c) => permitidas.has(c));
 }
 
-function marcarCidadesFiltradasRegra(r) {
-  if (!Array.isArray(r.cidades_selecionadas)) {
-    r.cidades_selecionadas = [];
-  }
-  for (const c of cidadesRegraFiltradas(r)) {
-    if (!r.cidades_selecionadas.includes(c)) {
-      r.cidades_selecionadas.push(c);
-    }
-  }
+function totalCidadesNaRegra(r) {
+  return (
+    cidadesSelecionadasPermitidasNaRegra(r, 'origem').length +
+    cidadesSelecionadasPermitidasNaRegra(r, 'destino').length
+  );
 }
 
-function regraTemCidade(r, cidade) {
-  return Array.isArray(r.cidades_selecionadas) && r.cidades_selecionadas.includes(cidade);
+function regraTemAlgumaCidade(r) {
+  return totalCidadesNaRegra(r) > 0;
 }
 
-function toggleCidadeRegra(r, cidade, checked) {
-  if (!Array.isArray(r.cidades_selecionadas)) {
-    r.cidades_selecionadas = [];
-  }
-  if (checked) {
-    if (!r.cidades_selecionadas.includes(cidade)) {
-      r.cidades_selecionadas.push(cidade);
-    }
-  } else {
-    r.cidades_selecionadas = r.cidades_selecionadas.filter((c) => c !== cidade);
-  }
-}
-
-function selecionarTodasCidadesRegra(r) {
-  r.cidades_selecionadas = [...cidadesDisponiveisParaRegra(r.aplica_a)];
-}
-
-function limparCidadesRegra(r) {
-  r.cidades_selecionadas = [];
-}
-
-function aoMudarAplicaARegra(r) {
-  r.busca_cidades = '';
-  const permitidas = new Set(cidadesDisponiveisParaRegra(r.aplica_a));
-  if (!Array.isArray(r.cidades_selecionadas)) {
-    r.cidades_selecionadas = [];
+function marcarCidadesFiltradasRegra(r, lado) {
+  const meta = ladosRegraCidade.find((l) => l.id === lado);
+  if (!meta) {
     return;
   }
-  r.cidades_selecionadas = r.cidades_selecionadas.filter((c) => permitidas.has(c));
+  const lista = listaCidadesRegra(r, lado);
+  for (const cidade of cidadesRegraFiltradas(r, lado)) {
+    if (!lista.includes(cidade)) {
+      lista.push(cidade);
+    }
+  }
+  r[meta.listaCampo] = lista;
 }
 
-function cidadesOrfasNaRegra(r) {
-  const permitidas = new Set(cidadesDisponiveisParaRegra(r.aplica_a));
-  return (r.cidades_selecionadas || []).filter((c) => !permitidas.has(c));
+function regraTemCidade(r, cidade, lado) {
+  return listaCidadesRegra(r, lado).includes(cidade);
+}
+
+function toggleCidadeRegra(r, cidade, checked, lado) {
+  const meta = ladosRegraCidade.find((l) => l.id === lado);
+  if (!meta) {
+    return;
+  }
+  let lista = [...listaCidadesRegra(r, lado)];
+  if (checked) {
+    if (!lista.includes(cidade)) {
+      lista.push(cidade);
+    }
+  } else {
+    lista = lista.filter((c) => c !== cidade);
+  }
+  r[meta.listaCampo] = lista;
+}
+
+function selecionarTodasCidadesRegra(r, lado) {
+  const meta = ladosRegraCidade.find((l) => l.id === lado);
+  if (!meta) {
+    return;
+  }
+  r[meta.listaCampo] = [...cidadesDisponiveisParaRegra(lado)];
+}
+
+function limparCidadesRegra(r, lado) {
+  const meta = ladosRegraCidade.find((l) => l.id === lado);
+  if (!meta) {
+    return;
+  }
+  r[meta.listaCampo] = [];
+}
+
+function cidadesOrfasNaRegra(r, lado) {
+  const permitidas = new Set(cidadesDisponiveisParaRegra(lado));
+  return listaCidadesRegra(r, lado).filter((c) => !permitidas.has(c));
 }
 
 function normNumApi(v) {
@@ -1051,45 +1098,85 @@ function chaveGrupoRegraApi(r) {
   ].join('\0');
 }
 
+function regraUiFromRow(row, origens, destinos) {
+  regraKey += 1;
+  const pmn =
+    row.peso_min_kg != null && row.peso_min_kg !== '' ? Number(row.peso_min_kg) / 1000 : null;
+  const pmx =
+    row.peso_max_kg != null && row.peso_max_kg !== '' ? Number(row.peso_max_kg) / 1000 : null;
+  return {
+    _key: `r-${regraKey}-${row.id || Math.random()}`,
+    cidades_origem_selecionadas: [...origens],
+    cidades_destino_selecionadas: [...destinos],
+    busca_cidades_origem: '',
+    busca_cidades_destino: '',
+    peso_min_ton: pmn !== null && !Number.isNaN(pmn) ? pmn : null,
+    peso_max_ton: pmx !== null && !Number.isNaN(pmx) ? pmx : null,
+    valor_carga_min:
+      row.valor_carga_min != null && row.valor_carga_min !== ''
+        ? Number(row.valor_carga_min)
+        : null,
+    valor_carga_max:
+      row.valor_carga_max != null && row.valor_carga_max !== ''
+        ? Number(row.valor_carga_max)
+        : null,
+  };
+}
+
 function agruparRegrasDaApi(regrasApi) {
   if (!Array.isArray(regrasApi) || !regrasApi.length) {
     return [];
   }
-  const map = new Map();
+  const comGrupo = new Map();
+  const avulsas = [];
   for (const r of regrasApi) {
-    const k = chaveGrupoRegraApi(r);
-    if (!map.has(k)) {
-      map.set(k, { row: r, cidades: [] });
-    }
-    const g = map.get(k);
-    const city = (r.cidade ?? '').trim();
-    if (city && !g.cidades.includes(city)) {
-      g.cidades.push(city);
+    const grupo = (r.regra_grupo ?? '').trim();
+    if (grupo) {
+      if (!comGrupo.has(grupo)) {
+        comGrupo.set(grupo, { row: r, origens: [], destinos: [] });
+      }
+      const g = comGrupo.get(grupo);
+      const city = (r.cidade ?? '').trim();
+      if (!city) {
+        continue;
+      }
+      if (r.aplica_a === 'destino') {
+        if (!g.destinos.includes(city)) {
+          g.destinos.push(city);
+        }
+      } else if (!g.origens.includes(city)) {
+        g.origens.push(city);
+      }
+    } else {
+      avulsas.push(r);
     }
   }
-  return [...map.values()].map(({ row, cidades }) => {
-    regraKey += 1;
-    const pmn =
-      row.peso_min_kg != null && row.peso_min_kg !== '' ? Number(row.peso_min_kg) / 1000 : null;
-    const pmx =
-      row.peso_max_kg != null && row.peso_max_kg !== '' ? Number(row.peso_max_kg) / 1000 : null;
-    return {
-      _key: `r-${regraKey}-${row.id || Math.random()}`,
-      aplica_a: row.aplica_a || 'origem',
-      cidades_selecionadas: [...cidades],
-      busca_cidades: '',
-      peso_min_ton: pmn !== null && !Number.isNaN(pmn) ? pmn : null,
-      peso_max_ton: pmx !== null && !Number.isNaN(pmx) ? pmx : null,
-      valor_carga_min:
-        row.valor_carga_min != null && row.valor_carga_min !== ''
-          ? Number(row.valor_carga_min)
-          : null,
-      valor_carga_max:
-        row.valor_carga_max != null && row.valor_carga_max !== ''
-          ? Number(row.valor_carga_max)
-          : null,
-    };
-  });
+  const deGrupo = [...comGrupo.values()].map(({ row, origens, destinos }) =>
+    regraUiFromRow(row, origens, destinos)
+  );
+  const mapAvulsas = new Map();
+  for (const r of avulsas) {
+    const k = chaveGrupoRegraApi(r);
+    if (!mapAvulsas.has(k)) {
+      mapAvulsas.set(k, { row: r, origens: [], destinos: [] });
+    }
+    const g = mapAvulsas.get(k);
+    const city = (r.cidade ?? '').trim();
+    if (!city) {
+      continue;
+    }
+    if (r.aplica_a === 'destino') {
+      if (!g.destinos.includes(city)) {
+        g.destinos.push(city);
+      }
+    } else if (!g.origens.includes(city)) {
+      g.origens.push(city);
+    }
+  }
+  const deAvulsas = [...mapAvulsas.values()].map(({ row, origens, destinos }) =>
+    regraUiFromRow(row, origens, destinos)
+  );
+  return [...deGrupo, ...deAvulsas];
 }
 
 function textToList(text) {
@@ -1121,19 +1208,32 @@ function emptyNum(v) {
 function regrasPayload() {
   const out = [];
   for (const r of formParam.value.regras) {
-    const cidades = Array.isArray(r.cidades_selecionadas) ? r.cidades_selecionadas : [];
-    for (const cidade of cidades) {
-      const c = String(cidade).trim();
-      if (!c) {
-        continue;
-      }
+    const origens = cidadesSelecionadasPermitidasNaRegra(r, 'origem');
+    const destinos = cidadesSelecionadasPermitidasNaRegra(r, 'destino');
+    if (!origens.length && !destinos.length) {
+      continue;
+    }
+    const limites = {
+      peso_min_kg: tonToKg(r.peso_min_ton),
+      peso_max_kg: tonToKg(r.peso_max_ton),
+      valor_carga_min: emptyNum(r.valor_carga_min),
+      valor_carga_max: emptyNum(r.valor_carga_max),
+    };
+    const grupoUid = origens.length && destinos.length ? crypto.randomUUID() : null;
+    for (const cidade of origens) {
       out.push({
-        aplica_a: r.aplica_a,
-        cidade: c,
-        peso_min_kg: tonToKg(r.peso_min_ton),
-        peso_max_kg: tonToKg(r.peso_max_ton),
-        valor_carga_min: emptyNum(r.valor_carga_min),
-        valor_carga_max: emptyNum(r.valor_carga_max),
+        aplica_a: 'origem',
+        cidade,
+        regra_grupo: grupoUid,
+        ...limites,
+      });
+    }
+    for (const cidade of destinos) {
+      out.push({
+        aplica_a: 'destino',
+        cidade,
+        regra_grupo: grupoUid,
+        ...limites,
       });
     }
   }
@@ -1215,9 +1315,7 @@ function removerCidadeOrigem(i) {
   const removed = formParam.value.cidades_origem_list[i];
   formParam.value.cidades_origem_list.splice(i, 1);
   for (const r of formParam.value.regras) {
-    if (r.aplica_a === 'origem' && Array.isArray(r.cidades_selecionadas)) {
-      r.cidades_selecionadas = r.cidades_selecionadas.filter((c) => c !== removed);
-    }
+    r.cidades_origem_selecionadas = listaCidadesRegra(r, 'origem').filter((c) => c !== removed);
   }
 }
 
@@ -1247,9 +1345,7 @@ function removerCidadeDestino(i) {
   const removed = formParam.value.cidades_destino_list[i];
   formParam.value.cidades_destino_list.splice(i, 1);
   for (const r of formParam.value.regras) {
-    if (r.aplica_a === 'destino' && Array.isArray(r.cidades_selecionadas)) {
-      r.cidades_selecionadas = r.cidades_selecionadas.filter((c) => c !== removed);
-    }
+    r.cidades_destino_selecionadas = listaCidadesRegra(r, 'destino').filter((c) => c !== removed);
   }
 }
 

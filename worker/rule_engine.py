@@ -1,7 +1,7 @@
 """
 Motor de regras: avalia se uma carga atende aos parâmetros configurados.
 Critérios opcionais: só entram na avaliação se estiverem preenchidos.
-Cidades permitidas em listas; regras extras por cidade (origem ou destino) com peso/valor.
+Cidades permitidas em listas; regras extras por cidade (origem, destino ou combinação) com peso/valor.
 """
 import re
 
@@ -31,10 +31,13 @@ def atende_regras(carga, parametros):
         if not _cidade_em_lista(carga.get("DestinationLocationCity"), cd):
             return False
 
-    for regra in _lista_regras(parametros.get("regras")):
-        if not _regra_cidade_aplicavel(regra, carga):
-            continue
-        if not _regra_limites_ok(regra, carga):
+    regras = _lista_regras(parametros.get("regras"))
+    grupos, avulsas = _particionar_regras(regras)
+    for grupo_regras in grupos.values():
+        if not _grupo_regra_ok(grupo_regras, carga):
+            return False
+    for regra in avulsas:
+        if not _regra_avulsa_ok(regra, carga):
             return False
 
     peso_min = parametros.get("peso_min")
@@ -81,6 +84,55 @@ def _lista_regras(v):
     if isinstance(v, list):
         return [x for x in v if isinstance(x, dict)]
     return []
+
+
+def _particionar_regras(regras):
+    grupos = {}
+    avulsas = []
+    for regra in regras:
+        grupo = (regra.get("regra_grupo") or "").strip()
+        if grupo:
+            grupos.setdefault(grupo, []).append(regra)
+        else:
+            avulsas.append(regra)
+    return grupos, avulsas
+
+
+def _grupo_regra_ok(grupo_regras, carga):
+    origens = []
+    destinos = []
+    for regra in grupo_regras:
+        cidade_regra = (regra.get("cidade") or "").strip().upper()
+        if not cidade_regra:
+            continue
+        aplica = (regra.get("aplica_a") or "").strip().lower()
+        if aplica == "origem":
+            origens.append(cidade_regra)
+        elif aplica == "destino":
+            destinos.append(cidade_regra)
+    if not origens and not destinos:
+        return True
+    origem_ok = not origens or _cidade_em_lista(
+        carga.get("SourceLocationCity"), origens
+    )
+    destino_ok = not destinos or _cidade_em_lista(
+        carga.get("DestinationLocationCity"), destinos
+    )
+    if origens and destinos:
+        aplicavel = origem_ok and destino_ok
+    elif origens:
+        aplicavel = origem_ok
+    else:
+        aplicavel = destino_ok
+    if not aplicavel:
+        return True
+    return _regra_limites_ok(grupo_regras[0], carga)
+
+
+def _regra_avulsa_ok(regra, carga):
+    if not _regra_cidade_aplicavel(regra, carga):
+        return True
+    return _regra_limites_ok(regra, carga)
 
 
 def _regra_cidade_aplicavel(regra, carga):

@@ -35,6 +35,7 @@ class ParametroController extends Controller
             'cidades_destino_aceitas.*' => 'string|max:255',
             'regras' => 'nullable|array',
             'regras.*.aplica_a' => 'nullable|in:origem,destino',
+            'regras.*.regra_grupo' => 'nullable|string|max:36',
             'regras.*.cidade' => 'nullable|string|max:255',
             'regras.*.peso_min_kg' => 'nullable|numeric|min:0',
             'regras.*.peso_max_kg' => 'nullable|numeric|min:0',
@@ -125,8 +126,10 @@ class ParametroController extends Controller
                 continue;
             }
 
+            $grupo = isset($r['regra_grupo']) ? trim((string) $r['regra_grupo']) : '';
             $parametro->regrasCidades()->create([
                 'aplica_a' => $aplica,
+                'regra_grupo' => $grupo !== '' ? $grupo : null,
                 'cidade' => $cidade,
                 'peso_min_kg' => $this->nullableDecimal($r['peso_min_kg'] ?? null),
                 'peso_max_kg' => $this->nullableDecimal($r['peso_max_kg'] ?? null),

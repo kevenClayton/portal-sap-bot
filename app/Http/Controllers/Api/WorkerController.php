@@ -68,6 +68,7 @@ class WorkerController extends Controller
                     ->all(),
                 'regras' => $parametro->regrasCidades->map(fn ($r) => [
                     'aplica_a' => $r->aplica_a,
+                    'regra_grupo' => $r->regra_grupo,
                     'cidade' => mb_strtoupper(trim($r->cidade)),
                     'peso_min_kg' => $r->peso_min_kg !== null ? (float) $r->peso_min_kg : null,
                     'peso_max_kg' => $r->peso_max_kg !== null ? (float) $r->peso_max_kg : null,

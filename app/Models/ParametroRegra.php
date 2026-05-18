@@ -12,6 +12,7 @@ class ParametroRegra extends Model
     protected $fillable = [
         'parametro_id',
         'aplica_a',
+        'regra_grupo',
         'cidade',
         'peso_min_kg',
         'peso_max_kg',
